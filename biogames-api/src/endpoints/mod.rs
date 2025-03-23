@@ -1,0 +1,9 @@
+pub mod create_game;
+pub mod get_game;
+pub mod get_current_challenge;
+pub mod submit_challenge;
+pub mod get_challenge_core;
+pub mod get_leaderboard;
+pub mod quit_game;
+pub mod validate_username;
+pub mod check_game_type;
