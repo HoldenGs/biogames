@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "vite --host 0.0.0.0 --port 80",
+    "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc && vite build",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
@@ -15,9 +15,12 @@
     "@tanstack/react-query": "^4.29.17",
     "@tanstack/react-query-devtools": "^4.36.1",
     "babel-plugin-macros": "^3.1.0",
+    "compression": "^1.7.4",
     "express": "^4.21.0",
+    "express-rate-limit": "^7.1.5",
     "formik": "^2.4.6",
     "fs": "^0.0.1-security",
+    "helmet": "^7.1.0",
     "http": "^0.0.1-security",
     "https": "^1.0.0",
     "react": "^18.2.0",
@@ -38,6 +41,7 @@
     "eslint-plugin-react-refresh": "^0.3.4",
     "postcss": "^8.4.24",
     "tailwindcss": "^3.3.2",
+    "terser": "^5.39.0",
     "typescript": "^5.0.2",
     "vite": "^4.3.9"
   }

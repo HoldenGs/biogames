@@ -7,3 +7,6 @@ pub mod get_leaderboard;
 pub mod quit_game;
 pub mod validate_username;
 pub mod check_game_type;
+pub mod check_username;
+pub mod generate_user_id;
+pub mod register_with_username;

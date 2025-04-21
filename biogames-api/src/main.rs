@@ -27,7 +27,10 @@ use biogames_api::{
         get_challenge_core::*,
         get_leaderboard::*,
         validate_username::validate_username,
-        check_game_type::check_game_type
+        check_game_type::check_game_type,
+        check_username::check_username,
+        generate_user_id::generate_user_id,
+        register_with_username::register_with_username
     },
     establish_db_connection
 };
@@ -63,6 +66,9 @@ async fn main() {
         .route("/leaderboard", get(get_leaderboard))
         .route("/validate-username/:username", get(validate_username))
         .route("/check-game-type/:username", get(check_game_type))
+        .route("/check-username/:user_id", get(check_username))
+        .route("/generate-user-id", post(generate_user_id))
+        .route("/register-with-username", post(register_with_username))
         .layer(cors);
 
 

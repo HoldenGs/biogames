@@ -49,6 +49,22 @@ pub struct Her2Core {
     pub created_at: DateTime<Utc>
 }
 
+#[derive(Debug, Queryable, Selectable)]
+#[diesel(table_name = crate::schema::registered_users)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct RegisteredUser {
+    pub id: i32,
+    pub user_id: String,
+    pub username: Option<String>
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = crate::schema::registered_users)]
+pub struct NewRegisteredUser {
+    pub user_id: String,
+    pub username: Option<String>
+}
+
 #[derive(Clone, Copy, Default)]
 pub struct ValidatedRequest<T>(pub T);
 
@@ -174,6 +190,25 @@ pub struct LeaderboardEntryResponse {
 }
 
 impl IntoResponse for LeaderboardResponse {
+    fn into_response(self) -> Response {
+        (StatusCode::OK, axum::Json(self)).into_response()
+    }
+}
+
+#[derive(Deserialize, Validate)]
+pub struct RegisterUserRequest {
+    #[validate(length(min = 1, max = 32, message = "Username must be between 1 and 32 characters"))]
+    pub username: String
+}
+
+#[derive(Serialize)]
+pub struct RegisterUserResponse {
+    pub success: bool,
+    pub user_id: String,
+    pub username: Option<String>
+}
+
+impl IntoResponse for RegisterUserResponse {
     fn into_response(self) -> Response {
         (StatusCode::OK, axum::Json(self)).into_response()
     }

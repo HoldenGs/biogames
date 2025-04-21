@@ -1,5 +1,7 @@
 use axum::{http::StatusCode, response::IntoResponse};
-use diesel::{insert_into, query_dsl::methods::FilterDsl, sql_query, sql_types::Integer, ExpressionMethods, RunQueryDsl};
+use diesel::{insert_into, sql_query, sql_types::Integer, ExpressionMethods, RunQueryDsl, QueryDsl};
+use diesel::query_dsl::methods::FilterDsl as DieselFilterDsl;
+use diesel::BoolExpressionMethods;
 use tracing::{event, Level};
 use axum::extract::Query;
 use once_cell::sync::Lazy;
@@ -79,8 +81,46 @@ pub async fn create_game(
     ValidatedRequest(body): ValidatedRequest<CreateGameRequest>
 ) -> impl IntoResponse {
     let connection = &mut establish_db_connection();
-    let is_test = params.mode.as_deref() == Some("posttest") || params.mode.as_deref() == Some("pretest");
-    let mode = params.mode.as_deref().unwrap_or("training").to_string();
+
+    use crate::schema::games::dsl as gdsl;
+
+    let pretest_condition = username.eq(&body.username).and(game_type.eq("pretest"));
+    let pretest_count: i64 = DieselFilterDsl::filter(gdsl::games, pretest_condition)
+        .count()
+        .get_result(connection)
+        .unwrap_or(0);
+
+    let training_condition = username.eq(&body.username).and(game_type.eq("training"));
+    let training_count: i64 = DieselFilterDsl::filter(gdsl::games, training_condition)
+        .count()
+        .get_result(connection)
+        .unwrap_or(0);
+
+    let posttest_condition = username.eq(&body.username).and(game_type.eq("posttest"));
+    let posttest_count: i64 = DieselFilterDsl::filter(gdsl::games, posttest_condition)
+        .count()
+        .get_result(connection)
+        .unwrap_or(0);
+
+    let requested_mode = params.mode.as_deref().unwrap_or("training");
+
+    let allowed = match requested_mode {
+        "pretest" => pretest_count == 0,
+        "training" => pretest_count > 0 && training_count < 5,
+        "posttest" => pretest_count > 0 && training_count >= 5 && posttest_count == 0,
+        _ => true,
+    };
+
+    if !allowed {
+        return (
+            StatusCode::BAD_REQUEST,
+            format!("Game limit reached or prerequisites not met for {} mode", requested_mode),
+        )
+            .into_response();
+    }
+
+    let is_test = requested_mode == "posttest" || requested_mode == "pretest";
+    let mode = requested_mode.to_string();
     
     let challenges_per_game = if is_test { 50 } else { 20 };
 
@@ -137,7 +177,9 @@ pub async fn create_game(
     if challenges.is_empty() {
         event!(Level::ERROR, "no HER2 cores found");
 
-        diesel::delete(games.filter(id.eq(game.id)))
+        diesel::delete(
+            diesel::QueryDsl::filter(gdsl::games, gdsl::id.eq(game.id))
+        )
             .execute(connection)
             .unwrap();
 

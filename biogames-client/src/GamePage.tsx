@@ -3,7 +3,7 @@ import Game from "./Game";
 import CurrentChallengeResponse from "./CurrentChallengeResponse";
 import logo from './assets/logo3.webp';
 import { Navigate, useNavigate } from "react-router-dom";
-import { getUsername, getGameMode } from "./Auth";
+import { getUsername, getGameMode, setGameMode } from "./Auth";
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from './config';
 import ZoomableImage from './ZoomableImage';
@@ -104,12 +104,18 @@ function GamePage({ mode }: GamePageProps) {
         onSuccess: () => {
             console.log(challengeQuery.data?.completed_challenges);
             if (challengeQuery.data?.completed_challenges === 0) {
+                // No progress: go home
                 navigate('/');
             } else {
+                // If in a test mode, switch to training and go to the training menu
                 if (getGameMode() === 'pretest' || getGameMode() === 'posttest') {
-                    return (<Navigate to={`/menu`}/>);
+                    // Clear any cached game/challenge data so new training game starts fresh
+                    queryClient.removeQueries({ queryKey: ['game'] });
+                    queryClient.removeQueries({ queryKey: ['challenge'] });
+                    setGameMode('training');
+                    navigate('/menu');
                 } else {
-                    console.log(gameQuery.data?.id);
+                    // Non-test mode quit: go to results
                     navigate(`/games/${gameQuery.data?.id}/results`);
                 }
             }

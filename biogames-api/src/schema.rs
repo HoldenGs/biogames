@@ -35,6 +35,15 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    registered_users (id) {
+        id -> Int4,
+        user_id -> Text,
+        #[max_length = 32]
+        username -> Nullable<Varchar>,
+    }
+}
+
 diesel::joinable!(challenges -> games (game_id));
 diesel::joinable!(challenges -> her2_cores (core_id));
 
@@ -42,4 +51,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     challenges,
     games,
     her2_cores,
+    registered_users,
 );

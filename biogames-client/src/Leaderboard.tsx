@@ -30,13 +30,16 @@ function Leaderboard(props: LeaderboardProps) {
             <tbody>
                 {leaderboardQuery.data.entries
                 .filter(e => !e.username.endsWith('admin'))
-                .map(e => (
+                .map(e => {
+                    const name = e.username.startsWith('UCLA_') ? 'Anonymous' : e.username;
+                    return (
                     <tr className="odd:bg-gray-100">
-                        <td>{e.username}</td>
+                        <td>{name}</td>
                         <td>{e.score}</td>
                         <td>{humanize_time(e.time_taken_ms, true)}</td>
                     </tr>
-                ))}
+                    )} )
+                }
             </tbody>
         </table>
     );

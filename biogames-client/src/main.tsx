@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { createHashRouter, RouterProvider, Navigate } from 'react-router-dom';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -8,6 +8,8 @@ import Root from './Root.tsx';
 import GamePage from './GamePage.tsx';
 import Menu from './Menu.tsx';
 import ResultsPage from './ResultsPage.tsx';
+import IntroductionPage from './IntroductionPage.tsx';
+import TestRegisterForm from './TestRegisterForm.tsx';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools/build/lib/devtools';
 
 const queryClient = new QueryClient({
@@ -20,7 +22,7 @@ const queryClient = new QueryClient({
 });
 
 
-const router = createBrowserRouter([
+const router = createHashRouter([
     {
         path: '/',
         element: <Root/>,
@@ -28,6 +30,10 @@ const router = createBrowserRouter([
             {
                 index: true,
                 element: <Navigate to="/menu" replace />
+            },
+            {
+                path: 'introduction',
+                element: <IntroductionPage />
             },
             {
                 path: 'menu',
@@ -84,6 +90,16 @@ const router = createBrowserRouter([
             {
                 path: 'games/:id/results',
                 element: <ResultsPage mode="posttest" />
+            },
+        ]
+    },
+    {
+        path: '/test-registration',
+        element: <Root/>,
+        children: [
+            {
+                index: true,
+                element: <TestRegisterForm />
             },
         ]
     }

@@ -1,12 +1,15 @@
 import paper from './assets/paper.png';
 import logo from './assets/logo3.webp';
 import PlayForm from "./PlayForm";
+import PreTestPlayForm from "./PreTestPlayForm";
 import { useEffect, useState } from "react";
 import Instructions from "./Instructions";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Leaderboard from './Leaderboard';
 import { API_BASE_URL } from './config';
 import Game from "./Game";
+import { isAuthenticated, setGameMode } from './Auth';
+import { useNavigate } from 'react-router-dom';
 
 interface MenuProps {
     mode: string;
@@ -15,18 +18,15 @@ interface MenuProps {
 function Menu({ mode }: MenuProps) {
     const [showInstructions, setShowInstructions] = useState(false);
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
 
-    // useEffect(() => {
-    //     queryClient.removeQueries(['game']);
-    //     queryClient.removeQueries(['challenge']);
-    //     //queryClient.removeQueries(['leaderboard']);
-    // }, []);
+    // No automatic redirect; user can choose Introduction via button if needed
 
     useEffect(() => {
         queryClient.invalidateQueries(['game']);
         queryClient.invalidateQueries(['challenge']);
         queryClient.invalidateQueries(['leaderboard']);
-      }, [queryClient]);
+    }, [queryClient]);
 
     return (
         <>
@@ -35,14 +35,44 @@ function Menu({ mode }: MenuProps) {
                 <div className="flex flex-col justify-between gap-2">
                     <div className="flex flex-col gap-2">
                         <img src={logo} alt="Logo" className="mb-2"/>
-                        
-                        {/* {(mode === "pretest" || mode === "posttest") && <p style={{color:"red"}}><b>You are in {mode} mode.</b></p>}
-                        {mode === "training" && <p style={{color:"green"}}><b>You are in training mode.</b></p>} */}
+                        {/* Mode toggle buttons */}
+                        <div className="flex gap-2 mb-4">
+                            <button
+                                className={`px-3 py-1 rounded ${mode === 'training' ? 'bg-primary-500 text-white' : 'bg-gray-200'}`}
+                                onClick={() => { setGameMode('training'); navigate('/menu'); }}
+                            >
+                                Training
+                            </button>
+                            <button
+                                className={`px-3 py-1 rounded ${mode === 'pretest' ? 'bg-primary-500 text-white' : 'bg-gray-200'}`}
+                                onClick={() => { setGameMode('pretest'); navigate('/pretest/menu'); }}
+                            >
+                                Pretest
+                            </button>
+                            <button
+                                className={`px-3 py-1 rounded ${mode === 'posttest' ? 'bg-primary-500 text-white' : 'bg-gray-200'}`}
+                                onClick={() => { setGameMode('posttest'); navigate('/posttest/menu'); }}
+                            >
+                                Posttest
+                            </button>
+                            <button
+                                className="px-3 py-1 rounded bg-gray-200"
+                                onClick={() => navigate('/introduction')}
+                            >
+                                Introduction
+                            </button>
+                        </div>
                         <p className="text-justify">
-                            Enter a unique username below and click "Play" to start the
-                            game.
+                            {mode === "pretest" 
+                                ? "Welcome to the pre-test! Please enter your User ID and choose a username to begin."
+                                : "Enter your User ID below and click \"Play\" to start the game."}
                         </p>
-                        <PlayForm mode={mode}/>
+                        <div>
+                            <p>If you don't have a User ID, go to the introduction page and input your mednet email address.</p>
+                        </div>
+                        {mode === "pretest" 
+                            ? <PreTestPlayForm mode={mode}/> 
+                            : <PlayForm mode={mode}/>}
                     </div>
                     <div className="flex flex-col gap-2">
                         <button className="bg-primary-500 p-2 text-white w-full"

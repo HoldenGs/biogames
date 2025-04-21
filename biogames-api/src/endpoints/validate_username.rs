@@ -4,33 +4,30 @@ use axum::{
     response::IntoResponse,
     http::StatusCode,
 };
-use std::collections::HashSet;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use tracing;
-use lazy_static::lazy_static;
 use serde_json::json;
 
-lazy_static! {
-    static ref VALID_USERNAMES: HashSet<String> = load_usernames();
-}
+use crate::{establish_db_connection, schema::registered_users};
 
-fn load_usernames() -> HashSet<String> {
-    let file = File::open("users.txt").expect("Failed to open users.txt");
-    let reader = BufReader::new(file);
-    reader.lines()
-        .filter_map(Result::ok)
-        .collect()
-}
-
-pub async fn validate_username(Path(username): Path<String>) -> impl IntoResponse {
-    let is_valid = VALID_USERNAMES.contains(&username);
-    tracing::info!("Validating username: {}", username);
+// This is actually validating a user_id, not a username
+pub async fn validate_username(Path(user_id): Path<String>) -> impl IntoResponse {
+    tracing::info!("Validating user_id: {}", user_id);
+    
+    let connection = &mut establish_db_connection();
+    
+    // Check if the user_id exists in the database
+    let is_valid = diesel::dsl::select(diesel::dsl::exists(
+        registered_users::table.filter(registered_users::user_id.eq(&user_id))
+    ))
+    .get_result::<bool>(connection)
+    .unwrap_or(false);
+    
     tracing::info!("Is valid: {}", is_valid);
 
     if is_valid {
-        (StatusCode::OK, Json(json!({ "username": username })))
+        (StatusCode::OK, Json(json!({ "user_id": user_id })))
     } else {
-        (StatusCode::NOT_FOUND, Json(json!({ "error": "Username not found" })))
+        (StatusCode::NOT_FOUND, Json(json!({ "error": "User ID not found" })))
     }
 }
