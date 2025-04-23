@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from './config';
 import { setUsername } from './Auth';
+import logo from './assets/logo3.webp';
 
 function IntroductionPage() {
   const [email, setEmail] = useState('');
@@ -54,8 +55,10 @@ function IntroductionPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Welcome to BioGames</h1>
+    <div className="border-2 border-black m-2 mx-auto p-4 w-[1000px] max-w-[95vw]">
+      <img src={logo} alt="Logo" className="mb-6 max-w-[500px] h-auto mx-auto"/>
+      <div>  </div>
+      <h1 className="text-3xl font-bold mb-6 flex justify-center">Introduction</h1>
       
       {/* Study information sheet */}
       <div className="bg-white rounded-lg shadow p-6 mb-8 space-y-4 max-h-[60vh] overflow-y-auto">
@@ -106,7 +109,7 @@ function IntroductionPage() {
       </div>
 
       {success ? (
-        <div className="bg-green-100 border-l-4 border-green-500 p-4 mb-6">
+        <div className="bg-green-100 border-l-4 border-green-500 p-4">
           <p className="text-green-700">
             Registration successful! Please check your email for your unique ID.
             You will be redirected to the pre-test menu shortly...
@@ -130,7 +133,7 @@ function IntroductionPage() {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="youremail@ucla.edu"
+                placeholder="youremail@ucla.edu or youremail@mednet.ucla.edu"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 required
               />
@@ -156,8 +159,7 @@ function IntroductionPage() {
             <button
               type="submit"
               disabled={loading}
-              style={{ backgroundColor: '#4A4166' }}
-              className="w-full text-white font-semibold py-2 px-4 rounded-full shadow-md transition-colors duration-200 ease-in-out hover:bg-blue-700 disabled:bg-white disabled:text-white"
+              className="w-full text-white bg-primary-500 py-2 px-4 transition-colors duration-200 ease-in-out hover:bg-blue-700 disabled:bg-white disabled:text-white"
             >
             {loading ? 'Processing...' : 'Join Study'}
             </button>
