@@ -38,6 +38,12 @@ function Menu({ mode }: MenuProps) {
                         {/* Mode toggle buttons */}
                         <div className="flex gap-2 mb-4">
                             <button
+                                className="px-3 py-1 rounded bg-gray-200"
+                                onClick={() => navigate('/introduction')}
+                            >
+                                Introduction
+                            </button>
+                            <button
                                 className={`px-3 py-1 rounded ${mode === 'training' ? 'bg-primary-500 text-white' : 'bg-gray-200'}`}
                                 onClick={() => { setGameMode('training'); navigate('/menu'); }}
                             >
@@ -54,12 +60,6 @@ function Menu({ mode }: MenuProps) {
                                 onClick={() => { setGameMode('posttest'); navigate('/posttest/menu'); }}
                             >
                                 Posttest
-                            </button>
-                            <button
-                                className="px-3 py-1 rounded bg-gray-200"
-                                onClick={() => navigate('/introduction')}
-                            >
-                                Introduction
                             </button>
                         </div>
                         <p className="text-justify">

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# export PGPASSWORD=password
+# export PGPASSWORD=24LOveyxyzboxfog729
 # for path in cores-webp/*/*; do
 #     score=$(echo "$path" | cut -d/ -f 2)
 #     query="insert into her2_cores (file_name, score) values (:'v1', :'v2');"

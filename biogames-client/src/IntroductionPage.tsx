@@ -9,6 +9,7 @@ function IntroductionPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
+  const [agreed, setAgreed] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,14 +138,30 @@ function IntroductionPage() {
                 <p className="mt-2 text-sm text-red-600">{error}</p>
               )}
             </div>
+
+            <div className="mb-4 flex items-start">
+            <input
+              type="checkbox"
+              id="agreement"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-1 mr-2"
+              required
+            />
+            <label htmlFor="agreement" className="text-med text-gray-700">
+              I confirm that I have read and understood the study instructions.
+            </label>
+            </div>
             
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+              style={{ backgroundColor: '#4A4166' }}
+              className="w-full text-white font-semibold py-2 px-4 rounded-full shadow-md transition-colors duration-200 ease-in-out hover:bg-blue-700 disabled:bg-white disabled:text-white"
             >
-              {loading ? 'Processing...' : 'Join Study'}
+            {loading ? 'Processing...' : 'Join Study'}
             </button>
+
           </form>
         </div>
       )}
