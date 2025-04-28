@@ -208,7 +208,7 @@ function PlayForm({ mode }: PlayFormProps) {
             {({ errors, isSubmitting }) => (
                 <Form>
                     <div className="p-3 mb-4 bg-blue-100 border border-blue-400 rounded">
-                        <h3 className="font-bold">Regular Play Form Active</h3>
+                        <h3 className="font-bold">Play Form Active</h3>
                         <p>Mode: {mode}, Local Mode: {localGameMode}</p>
                     </div>
                     <div className="flex justify-between gap-2 mb-1">
