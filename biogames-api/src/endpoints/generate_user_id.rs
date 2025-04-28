@@ -100,6 +100,18 @@ pub async fn generate_user_id(
             let _ = writeln!(stdin, "To: {}", payload.email);
             let _ = writeln!(stdin, "Subject: Your BioGames User ID\n");
             let _ = writeln!(stdin, "Your user ID is: {}", user_id);
+            let _ = writeln!(stdin, "");
+            let _ = writeln!(stdin, "Hello,");
+            let _ = writeln!(stdin, "");
+            let _ = writeln!(stdin, "Thank you for registering for the BioGames platform.");
+            let _ = writeln!(stdin, "Your assigned user ID is: {}", user_id);
+            let _ = writeln!(stdin, "");
+            let _ = writeln!(stdin, "DO NOT SHARE THIS INFO AND PLEASE SAVE THIS INFORMATION, AS IT’S CRITICAL FOR RECEIVING YOUR PRIZE.");
+            let _ = writeln!(stdin, "");
+            let _ = writeln!(stdin, "If you have any questions, please contact the BioGames team.");
+            let _ = writeln!(stdin, "");
+            let _ = writeln!(stdin, "Thank you,");
+            let _ = writeln!(stdin, "The BioGames Team");
         }
         let _ = child.wait();
     } else {
@@ -111,4 +123,7 @@ pub async fn generate_user_id(
         user_id,
         message: "User ID generated successfully. In production, this would be emailed to the provided address.".to_string(),
     }.into_response()
+
+    // TODO: add email text here and actually get it sent out
+
 } 
