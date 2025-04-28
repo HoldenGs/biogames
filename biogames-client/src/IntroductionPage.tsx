@@ -63,8 +63,8 @@ function IntroductionPage() {
       {/* Study information sheet */}
       <div className="bg-white rounded-lg shadow p-6 mb-8 space-y-4 max-h-[60vh] overflow-y-auto">
         <h2 className="text-2xl font-bold text-center mb-6">University of California, Los Angeles</h2>
-        <h3 className="text-xl font-semibold">Study Information Sheet</h3>
-        <h3 className="text-lg font-semibold">Evaluating the BioGames Platform as a Competitive Learning Tool for Training Diagnostic Accuracy in Breast Tissue Scoring</h3>
+        <h3 className="text-xl font-semibold text-center">Study Information Sheet</h3>
+        <h3 className="text-lg font-semibold text-center">Evaluating the BioGames Platform as a Competitive Learning Tool for Training Diagnostic Accuracy in Breast Tissue Scoring</h3>
 
         <h4 className="font-semibold">INTRODUCTION</h4>
         <p>Principle Investigator, Brian Qinyu Cheng, and Faculty Sponsor, Dr. Aydogan Ozcan, from the Department of Electrical Engineering at the University of California, Los Angeles are conducting a research study. You were selected as a possible participant in this study because you are a current medical resident in an ACGME-I-accredited residency programs in pathology. Your participation in this research study is voluntary.</p>
