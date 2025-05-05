@@ -56,8 +56,9 @@ function IntroductionPage() {
 
   return (
     <div className="border-2 border-black m-2 mx-auto p-4 w-[1000px] max-w-[95vw]">
-      <img src={logo} alt="Logo" className="mb-6 max-w-[500px] h-auto mx-auto"/>
-      <div>  </div>
+      <div className="flex flex-col gap-2">
+      <img src={logo} alt="Logo" className="mb-2 p-10"/>
+      </div>
       <h1 className="text-3xl font-bold mb-6 flex justify-center">Introduction</h1>
       
       {/* Study information sheet */}
