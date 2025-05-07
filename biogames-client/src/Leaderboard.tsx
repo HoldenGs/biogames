@@ -33,7 +33,7 @@ function Leaderboard(props: LeaderboardProps) {
                 .map(e => {
                     const name = e.username.startsWith('UCLA_') ? 'Anonymous' : e.username;
                     return (
-                    <tr className="odd:bg-gray-100">
+                    <tr key={e.username + e.timestamp} className="odd:bg-gray-100">
                         <td>{name}</td>
                         <td>{e.score}</td>
                         <td>{humanize_time(e.time_taken_ms, true)}</td>

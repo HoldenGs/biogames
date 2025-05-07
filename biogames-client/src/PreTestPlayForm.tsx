@@ -76,7 +76,7 @@ function PreTestPlayForm({ mode }: PreTestPlayFormProps) {
                         setUsername(usernameData.username);
                     }
                     setGameMode('pretest');
-                    navigate(`/game?mode=pretest`);
+                    navigate('/pretest/game', { replace: true });
                     return;
                 }
             }
@@ -107,7 +107,7 @@ function PreTestPlayForm({ mode }: PreTestPlayFormProps) {
             if (responseData.username) {
                 setUsername(responseData.username);
                 setGameMode('pretest');
-                navigate(`/game?mode=pretest`);
+                navigate('/pretest/game', { replace: true });
             } else {
                 setFieldError('username', 'Missing user ID in response');
                 setSubmitting(false);

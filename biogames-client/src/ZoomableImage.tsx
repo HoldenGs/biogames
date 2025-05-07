@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, WheelEvent, MouseEvent } from 'react';
+import React, { useState, useRef, useEffect, WheelEvent, MouseEvent, memo } from 'react';
 
 interface ZoomableImageProps {
   src: string;
@@ -7,17 +7,21 @@ interface ZoomableImageProps {
   maxZoom?: number;
 }
 
-function ZoomableImage({ src, alt = '', className = '', maxZoom = 4 }: ZoomableImageProps) {
+// Reverted to simple version to leverage browser caching with preload
+const ZoomableImage = memo(function ZoomableImage({ src, alt = '', className = '', maxZoom = 4 }: ZoomableImageProps) {
+  // console.log('[ZoomableImage] render with src:', src); // Keep commented out for now
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoaded, setIsLoaded] = useState(false); // Optional: for fade-in
 
   // Reset zoom and position when src changes
   useEffect(() => {
     setZoom(1);
     setPosition({ x: 0, y: 0 });
+    setIsLoaded(false); // Reset loaded state for new image
   }, [src]);
 
   const handleZoomIn = () => {
@@ -80,33 +84,34 @@ function ZoomableImage({ src, alt = '', className = '', maxZoom = 4 }: ZoomableI
   }, []);
 
   return (
-    <div className="relative" style={{ overflow: 'hidden' }}>
-      <div 
-        ref={containerRef}
-        className={`${className} overflow-hidden relative`} 
-        style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+    // Ensure container takes up space even before image loads fully
+    <div className="relative overflow-hidden h-[75vh] w-full flex items-center justify-center bg-gray-100"> 
+      {/* Image itself */}
+      <img 
+        key={src} // Add key to force re-mount on src change
+        src={src} // Use the original src directly
+        alt={alt}
+        onLoad={() => setIsLoaded(true)} // Track loading state
+        className="transition-opacity duration-300 ease-out" // Fade-in effect
+        style={{
+          opacity: isLoaded ? 1 : 0, // Control opacity based on load state
+          transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
+          transformOrigin: 'center',
+          maxWidth: '100%',
+          maxHeight: '75vh',
+          cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' // Apply cursor style here
+        }}
+        draggable="false"
+        // Apply interaction handlers directly if needed, or use the outer div
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
-        <img 
-          src={src} 
-          alt={alt}
-          className="transition-transform duration-100 ease-out"
-          style={{
-            transform: `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`,
-            transformOrigin: 'center',
-            maxWidth: '100%',
-            maxHeight: '75vh'
-          }}
-          draggable="false"
-        />
-      </div>
+        onMouseLeave={handleMouseUp} // Also reset drag on mouse leave
+      />
       
-      {/* Zoom controls */}
-      <div className="absolute bottom-2 right-2 flex gap-2 bg-black/50 p-2 rounded text-white">
+      {/* Zoom controls - kept outside the image itself */}
+      <div className="absolute bottom-2 right-2 z-10 flex gap-2 bg-black/50 p-2 rounded text-white">
         <button 
           onClick={handleZoomOut}
           className="w-8 h-8 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded"
@@ -130,6 +135,6 @@ function ZoomableImage({ src, alt = '', className = '', maxZoom = 4 }: ZoomableI
       </div>
     </div>
   );
-}
+});
 
 export default ZoomableImage; 

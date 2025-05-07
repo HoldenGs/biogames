@@ -75,7 +75,7 @@ function PlayForm({ mode }: PlayFormProps) {
                                 if (json) {
                                     if (json.pretest == 0) {
                                         setLocalGameMode('pretest');
-                                    } else if (json.training < 5) {
+                                    } else if (json.training < 400) {
                                         setLocalGameMode('training');
                                     } else if (json.posttest == 0) {
                                         setLocalGameMode('posttest');
@@ -153,7 +153,7 @@ function PlayForm({ mode }: PlayFormProps) {
                             if (json) {
                                 if (json.pretest == 0) {
                                     setLocalGameMode('pretest');
-                                } else if (json.training < 5) {
+                                } else if (json.training < 400) {
                                     setLocalGameMode('training');
                                 } else if (json.posttest == 0) {
                                     setLocalGameMode('posttest');
@@ -183,10 +183,8 @@ function PlayForm({ mode }: PlayFormProps) {
 
     const submit = (values: PlayFormValues, { setSubmitting }: FormikHelpers<PlayFormValues>) => {
         setSubmitting(true);
-        // Only store in session if not training
-        if (localGameMode !== 'training') {
+        // Always save the user_id for both pretest and training runs
             setUsername(values.user_id);
-        }
         
         if (localGameMode === 'pretest') {
             // Redirect to the pretest page for username registration
@@ -237,7 +235,7 @@ function PlayForm({ mode }: PlayFormProps) {
                         )
                     }
                     {localGameMode === 'posttest' && mode !== 'posttest' && (
-                        <div className="text-danger-500">You've completed all 5 training runs!</div>
+                        <div className="text-danger-500">You've completed all training runs!</div>
                     )}
                     {errors.user_id && (
                         <ul className="text-danger-500 text-left list-disc list-inside">

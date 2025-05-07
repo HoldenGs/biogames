@@ -1,12 +1,12 @@
 use axum::{http::StatusCode, response::IntoResponse};
 use diesel::{insert_into, sql_query, sql_types::Integer, ExpressionMethods, RunQueryDsl, QueryDsl};
-use diesel::query_dsl::methods::FilterDsl as DieselFilterDsl;
 use diesel::BoolExpressionMethods;
 use tracing::{event, Level};
 use axum::extract::Query;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use axum::Json;
+use crate::schema::registered_users::dsl;
 
 // use diesel::result::Error;
 // use tracing::{debug, error};
@@ -15,6 +15,7 @@ use crate::{
     establish_db_connection,
     models::{Challenge, CreateGameRequest, Game, GameResponse, ValidatedRequest},
     schema::games::dsl::*
+
 };
 
 static TEST_IMAGE_IDS: Lazy<Vec<i32>> = Lazy::new(|| {
@@ -84,20 +85,40 @@ pub async fn create_game(
 
     use crate::schema::games::dsl as gdsl;
 
-    let pretest_condition = username.eq(&body.username).and(game_type.eq("pretest"));
-    let pretest_count: i64 = DieselFilterDsl::filter(gdsl::games, pretest_condition)
+    // Lookup display-username from registered_users by user_id (body.username)
+    let real_username: String = match dsl::registered_users
+        .filter(dsl::user_id.eq(&body.username))
+        .select(dsl::username)
+        .first::<Option<String>>(connection)
+        .unwrap_or(None)
+    {
+        Some(u) => u,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                format!("No registered username found for user_id '{}'", body.username),
+            )
+            .into_response();
+        }
+    };
+
+    let pretest_condition = username.eq(&real_username).and(game_type.eq("pretest"));
+    let pretest_count: i64 = gdsl::games
+        .filter(pretest_condition)
         .count()
         .get_result(connection)
         .unwrap_or(0);
 
-    let training_condition = username.eq(&body.username).and(game_type.eq("training"));
-    let training_count: i64 = DieselFilterDsl::filter(gdsl::games, training_condition)
+    let training_condition = username.eq(&real_username).and(game_type.eq("training"));
+    let training_count: i64 = gdsl::games
+        .filter(training_condition)
         .count()
         .get_result(connection)
         .unwrap_or(0);
 
-    let posttest_condition = username.eq(&body.username).and(game_type.eq("posttest"));
-    let posttest_count: i64 = DieselFilterDsl::filter(gdsl::games, posttest_condition)
+    let posttest_condition = username.eq(&real_username).and(game_type.eq("posttest"));
+    let posttest_count: i64 = gdsl::games
+        .filter(posttest_condition)
         .count()
         .get_result(connection)
         .unwrap_or(0);
@@ -106,12 +127,20 @@ pub async fn create_game(
 
     let allowed = match requested_mode {
         "pretest" => pretest_count == 0,
-        "training" => pretest_count > 0 && training_count < 5,
-        "posttest" => pretest_count > 0 && training_count >= 5 && posttest_count == 0,
+        "training" => pretest_count > 0 && training_count < 400,
+        "posttest" => pretest_count > 0 && training_count >= 400 && posttest_count == 0,
         _ => true,
     };
 
     if !allowed {
+        tracing::debug!(
+            "Game creation denied - User: {}, Mode: {}, Counts - Pretest: {}, Training: {}, Posttest: {}",
+            body.username,
+            requested_mode,
+            pretest_count,
+            training_count,
+            posttest_count
+        );
         return (
             StatusCode::BAD_REQUEST,
             format!("Game limit reached or prerequisites not met for {} mode", requested_mode),
@@ -125,12 +154,12 @@ pub async fn create_game(
     let challenges_per_game = if is_test { 50 } else { 20 };
 
     {
-        tracing::debug!("Creating game for user: {}, game mode: {}", body.username, params.mode.as_deref().unwrap_or("uhoh"));
+        tracing::debug!("Creating game for user: {}, game mode: {}", real_username, params.mode.as_deref().unwrap_or("uhoh"));
     }
 
     // create game
     let game = insert_into(games)
-        .values((username.eq(body.username.clone()), max_score.eq(challenges_per_game * 5), game_type.eq(&mode)))
+        .values((username.eq(real_username.clone()), max_score.eq(challenges_per_game * 5), game_type.eq(&mode)))
         .get_result::<Game>(connection).unwrap();
 
     // let game = match game {

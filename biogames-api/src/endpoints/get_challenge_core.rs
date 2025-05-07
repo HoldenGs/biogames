@@ -1,5 +1,5 @@
 use axum::{
-    body::Body, extract::{Path, Query}, http::{header::CONTENT_TYPE, StatusCode}, response::{AppendHeaders, IntoResponse}
+    body::Body, extract::{Path, Query}, http::{header::{CONTENT_TYPE, CACHE_CONTROL, CONTENT_LENGTH}, StatusCode}, response::{AppendHeaders, IntoResponse}
 };
 use diesel::prelude::*;
 use tokio_util::io::ReaderStream;
@@ -105,10 +105,16 @@ pub async fn get_challenge_core(
 
     let (_challenge, core) = result.unwrap();
     tracing::debug!("core file name: {}", core.file_name);
-    let file = match tokio::fs::File::open(core.file_name).await {
+    let file_path = core.file_name.clone();
+    let file = match tokio::fs::File::open(&file_path).await {
         Ok(f) => f,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response()
     };
+    let metadata = match file.metadata().await {
+        Ok(m) => m,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response()
+    };
+    let file_size = metadata.len();
 
     diesel::update(challenges::table)
         .filter(challenges::id.eq(challenge_id))
@@ -120,7 +126,11 @@ pub async fn get_challenge_core(
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
+    // Tell browsers to cache these cores for 24h, serve correct mime, and set Content-Length
+    let length_value = file_size.to_string();
     (AppendHeaders([
-        (CONTENT_TYPE, "image/png")
+        (CONTENT_TYPE, "image/png"),
+        (CONTENT_LENGTH, &length_value),
+        (CACHE_CONTROL, "public, max-age=86400, immutable")
     ]), body).into_response()
 }
