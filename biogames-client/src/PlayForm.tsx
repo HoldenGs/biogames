@@ -11,9 +11,10 @@ interface PlayFormValues {
 
 interface PlayFormProps {
     mode: string;
+    disabled?: boolean;
 }
 
-function PlayForm({ mode }: PlayFormProps) {
+function PlayForm({ mode, disabled = false }: PlayFormProps) {
     const navigate = useNavigate();
     const storedUserId = getUsername(); // may exist but we won't auto-fill
     
@@ -217,23 +218,29 @@ function PlayForm({ mode }: PlayFormProps) {
                             className={`border ${errors.user_id && 'border-danger-500'} px-2 w-full`}
                         />
                         <button
-                            className="bg-primary-500 text-white px-4 py-2"
+                            className={`px-4 py-2 text-white w-[100px] ${disabled || localGameMode === 'finished' || localGameMode === 'posttest'
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-primary-500 hover:bg-primary-600'
+                            }`}
                             type="submit"
-                            disabled={localGameMode === 'finished' || localGameMode === 'posttest'}
+                            disabled={disabled || localGameMode === 'finished' || localGameMode === 'posttest'}
                         >
                             Play
                         </button>
+                        
                     </div>
                     {
-                        localGameMode === 'pretest' && (
+                        disabled ? (
+                        <div className="text-danger-500">
+                            Screen too small... please use a larger device or resize your window to continue.
+                            </div>
+                        ) : localGameMode === 'pretest' ? (
                             <div className="text-primary-500">You're about to start your pretest!</div>
-                        )
-                    }
-                    {
-                        localGameMode === 'training' && (
+                        ) : localGameMode === 'training' ? (
                             <div className="text-primary-500">You're about to start a training run!</div>
-                        )
+                        ) : null
                     }
+
                     {localGameMode === 'posttest' && mode !== 'posttest' && (
                         <div className="text-danger-500">You've completed all training runs!</div>
                     )}

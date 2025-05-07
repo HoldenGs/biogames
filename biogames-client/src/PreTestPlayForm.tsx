@@ -11,6 +11,7 @@ interface PreTestPlayFormValues {
 
 interface PreTestPlayFormProps {
     mode: string;
+    disabled?: boolean;
 }
 
 function PreTestPlayForm({ mode }: PreTestPlayFormProps) {
