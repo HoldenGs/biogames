@@ -168,7 +168,7 @@ function GamePage({ mode }: GamePageProps) {
             if (hours > 0) builder.push(`${hours}h `);
             if (minutes > 0) builder.push(`${minutes}m `);
             builder.push(`${seconds}s`);
-            // setOverallTimeString(builder.join("")); // Temporarily comment out to reduce re-renders
+            setOverallTimeString(builder.join(""));
         }, 100);
         return () => clearInterval(interval);
     }, [gameStartTime]);
