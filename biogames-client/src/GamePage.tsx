@@ -170,14 +170,14 @@ function GamePage({ mode }: GamePageProps) {
 
     useEffect(() => {
         const currentChallengeData = challengeQuery.data;
-        if (mode !== 'training' || !activeGameId || !currentChallengeData?.id || currentChallengeData.completed_challenges >= currentChallengeData.total_challenges) {
+        if (!activeGameId || !currentChallengeData?.id || currentChallengeData.completed_challenges >= currentChallengeData.total_challenges) {
             return;
         }
         const nextChallengeIndex = currentChallengeData.completed_challenges + 1;
         queryClient.fetchQuery<CurrentChallengeResponse>({
             queryKey: ['challenge', activeGameId, 'prefetch_next', nextChallengeIndex],
             queryFn: async () => {
-                const url = `${API_BASE_URL}/games/${activeGameId}/challenge?completed_count=${nextChallengeIndex}`;
+                const url = `${API_BASE_URL}/games/${activeGameId}/challenge?completed_count=1`;
                 const response = await fetch(url);
                 if (!response.ok) { console.error('[GamePage] Prefetch metadata fetch failed:', response.status, await response.text()); throw new Error('Prefetch metadata failed'); }
                 const data = await response.json();
