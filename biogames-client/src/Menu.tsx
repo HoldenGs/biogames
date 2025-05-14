@@ -200,17 +200,17 @@ function Menu({ mode }: MenuProps) {
                             Error loading preview: {errorPreviewCoreId?.message || 'Unknown error'}
                         </p>
                     )}
-                    {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && previewImageUrl && (
+                    {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && previewCoreData && (
                         <figure className="flex flex-col gap-1 w-full">
                             <img 
-                                src={previewImageUrl} 
-                                alt={`Preview for ${mode} mode`} 
+                                src={paper}
+                                alt={`BioGames microscope slide viewer interface illustration`} 
                                 className="border border-black max-w-full h-auto max-h-[400px] object-contain"
                             />
-                            <figcaption className="text-xs text-center">HER2 Core Preview ({mode})</figcaption>
+                            <figcaption className="text-xs text-center">BioGames: HER2 Scoring Challenge</figcaption>
                     </figure>
                     )}
-                    {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && !previewImageUrl && (
+                    {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && !previewCoreData && (
                         <p>No preview image available.</p>
                     )}
                 </div>
