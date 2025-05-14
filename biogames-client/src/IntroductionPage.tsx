@@ -57,7 +57,7 @@ function IntroductionPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <img src={logo} alt="BioGames Logo" className="w-48 h-48 mb-8" />
+      <img src={logo} alt="BioGames Logo" className="w-[500px] h-auto mb-8" />
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-xl text-sm">
         <h1 className="text-2xl font-bold mb-6 text-center text-gray-700">Welcome to BioGames!</h1>
         
@@ -101,7 +101,7 @@ function IntroductionPage() {
             <button
               type="submit"
                 disabled={loading || !agreed}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-500 hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
             >
                 {loading ? 'Registering...' : 'Register and Get User ID'}
             </button>
