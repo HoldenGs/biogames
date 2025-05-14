@@ -1,5 +1,5 @@
 import { Formik, Form, Field, ErrorMessage, FormikHelpers } from "formik";
-import { setUsername, getUsername, setGameMode, getGameMode } from "./Auth";
+import { setUsername, getUsername, setGameMode, getGameMode, setUserId } from "./Auth";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "./config";
 import { useState, useEffect } from "react";
@@ -186,7 +186,7 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId }: PlayFormProps) 
     const submit = (values: PlayFormValues, { setSubmitting }: FormikHelpers<PlayFormValues>) => {
         setSubmitting(true);
         // Always save the user_id for both pretest and training runs
-            setUsername(values.user_id);
+            setUserId(values.user_id);
         
         if (localGameMode === 'pretest') {
             // Redirect to the pretest page for username registration
