@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from './config';
-import { setUsername } from './Auth';
+import { setUserId, setEmail as setEmailInStorage } from './Auth';
 import logo from './assets/logo3.webp';
 
 function IntroductionPage() {
-  const [email, setEmail] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -18,20 +18,20 @@ function IntroductionPage() {
     setError(null);
 
     // Validate email format client-side
-    if (!email.endsWith('@ucla.edu') && !email.endsWith('@mednet.ucla.edu')) {
+    if (!emailInput.endsWith('@ucla.edu') && !emailInput.endsWith('@mednet.ucla.edu')) {
       setError('Please enter a valid @ucla.edu or @mednet.ucla.edu email address');
       setLoading(false);
       return;
     }
 
     try {
-      console.log(email);
+      console.log(emailInput);
       const response = await fetch(`${API_BASE_URL}/generate-user-id`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: emailInput }),
       });
 
       if (!response.ok) {
@@ -42,7 +42,8 @@ function IntroductionPage() {
 
       // Parse generated user ID and store it for authentication
       const data = await response.json();
-      setUsername(data.user_id);
+      setUserId(data.user_id);
+      setEmailInStorage(emailInput);
       setSuccess(true);
       setTimeout(() => {
         navigate('/pretest/menu');
@@ -55,119 +56,95 @@ function IntroductionPage() {
   };
 
   return (
-    <div className="border-2 border-black m-2 mx-auto p-4 w-[1000px] max-w-[95vw]">
-      <div className="flex flex-col gap-2">
-      <img src={logo} alt="Logo" className="mb-2 p-10"/>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+      <img src={logo} alt="BioGames Logo" className="w-48 h-48 mb-8" />
+      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-xl text-sm">
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-700">Welcome to BioGames!</h1>
+        
+        {!success ? (
+          <>
+            <p className="mb-4 text-gray-600">
+              This study is for <strong>educational and research purposes</strong>. By participating, you will play a series of games designed to test and improve your ability to identify HER2 expression levels in tumor images, a critical skill in cancer diagnosis and treatment planning. Your performance will help us understand how effective our game-based learning platform is.
+            </p>
+            <p className="mb-4 text-gray-600">
+              All data collected will be <strong>anonymized and used solely for research</strong>. Your privacy is important to us. You can withdraw from the study at any time.
+            </p>
+            <p className="mb-6 text-gray-600">
+              To begin, please enter your <strong>@ucla.edu</strong> or <strong>@mednet.ucla.edu</strong> email address below. We will email you a unique User ID that you will need to use throughout the study.
+            </p>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
+                <input 
+                  type="email" 
+                  id="email" 
+                  value={emailInput} 
+                  onChange={(e) => setEmailInput(e.target.value)} 
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  placeholder="your_email@ucla.edu"
+                  required 
+                />
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="agree"
+                  name="agree"
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="agree" className="ml-2 block text-sm text-gray-900">
+                  I have read the information above and agree to participate in the study.
+                </label>
+              </div>
+              <button 
+                type="submit" 
+                disabled={loading || !agreed}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
+              >
+                {loading ? 'Registering...' : 'Register and Get User ID'}
+              </button>
+              {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            </form>
+          </>
+        ) : (
+          <div className="text-center">
+            <p className="text-xl font-semibold text-green-600 mb-4">Registration Successful!</p>
+            <p className="text-gray-700 mb-2">Your unique User ID has been emailed to you.</p>
+            <p className="text-gray-700 mb-6">Please check your email and save your User ID. You will need it to log in and play.</p>
+            <p className="text-gray-700">You will be redirected to the Pre-Test Menu shortly...</p>
+          </div>
+        )}
+
+        <hr className="my-6" />
+
+        <h2 className="text-xl font-bold mb-3 text-gray-700">Study Information & Consent</h2>
+        <p className="mb-2 text-gray-600">
+          <strong>Study Title:</strong> BioGames - A Game-Based Learning Platform for HER2 Scoring
+        </p>
+        <p className="mb-2 text-gray-600">
+          <strong>Principal Investigator:</strong> Dr. Holden Thorp, Professor, Department of Pathology & Laboratory Medicine, UCLA.
+        </p>
+        <p className="mb-2 text-gray-600">
+          <strong>Purpose of the Study:</strong> To evaluate the effectiveness of a game-based learning platform in teaching HER2 scoring for breast cancer pathology.
+        </p>
+        <p className="mb-2 text-gray-600">
+          <strong>Procedures:</strong> Participants will register using their UCLA email, receive a User ID, and then complete a pre-test, a series of training games, and a post-test. Each part involves viewing tumor images and scoring HER2 expression.
+        </p>
+        <p className="mb-2 text-gray-600">
+          <strong>Confidentiality:</strong> Your email will only be used to send you your User ID. All gameplay data will be associated with this anonymized User ID. Published results will not contain any personally identifiable information.
+        </p>
+        <p className="mb-2 text-gray-600">
+          <strong>Voluntary Participation:</strong> Your participation is entirely voluntary. You may withdraw at any time without penalty.
+        </p>
+        <p className="mb-2 text-gray-600">
+          <strong>Contact Information:</strong> If you have any questions about the study, please contact Holden Thorp at <a href="mailto:holdengs@ucla.edu" className="text-blue-500 hover:underline">holdengs@ucla.edu</a>.
+        </p>
+         <p className="mb-2 text-gray-600">
+          <strong>IRB Approval:</strong> This study has been reviewed and approved by the UCLA Institutional Review Board (IRB#xxxxxxx).
+        </p>
       </div>
-      <h1 className="text-3xl font-bold mb-6 flex justify-center">Introduction</h1>
-      
-      {/* Study information sheet */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8 space-y-4 max-h-[60vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold text-center mb-6">University of California, Los Angeles</h2>
-        <h3 className="text-xl font-semibold text-center">Study Information Sheet</h3>
-        <h3 className="text-lg font-semibold text-center">Evaluating the BioGames Platform as a Competitive Learning Tool for Training Diagnostic Accuracy in Breast Tissue Scoring</h3>
-
-        <h4 className="font-semibold">INTRODUCTION</h4>
-        <p>Principle Investigator, Brian Qinyu Cheng, and Faculty Sponsor, Dr. Aydogan Ozcan, from the Department of Electrical Engineering at the University of California, Los Angeles are conducting a research study. You were selected as a possible participant in this study because you are a current medical resident in an ACGME-I-accredited residency programs in pathology. Your participation in this research study is voluntary.</p>
-
-        <h4 className="font-semibold">WHAT SHOULD I KNOW ABOUT A RESEARCH STUDY?</h4>
-        <ul className="list-disc list-inside space-y-1">
-          <li>Someone will explain this research study to you.</li>
-          <li>Whether or not you take part is up to you.</li>
-          <li>You can choose not to take part.</li>
-          <li>You can agree to take part and later change your mind.</li>
-          <li>Your decision will not be held against you.</li>
-          <li>You can ask all the questions you want before you decide.</li>
-        </ul>
-
-        <h4 className="font-semibold">WHY IS THIS RESEARCH BEING DONE?</h4>
-        <p>You are being invited to participate in a research study that evaluates the effectiveness of the BioGames platform in training pathology residents to accurately score clinical datasets, specifically Her2-stained breast tissue biopsies. The study aims to assess whether the BioGames platform can improve diagnostic accuracy and speed by using an interactive, competitive gaming environment.</p>
-
-        <h4 className="font-semibold">HOW LONG WILL THE RESEARCH LAST AND WHAT WILL I NEED TO DO?</h4>
-        <p>We estimate participation will take on an average of 30 minutes in total within the timeframe a month. Participant is expected to complete Pre-test, Post-test and at least one practice session. Pre-test and Post-test will each take around 5 minutes. Each practice session on the platform is expected to last 2 – 5 minutes and participants are encouraged to engage with the game multiple times to improve their scores.</p>
-        <p>If you volunteer to participate in this study, the researcher will ask you to do the following:</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>Complete an initial pre-test to evaluate your current ability to score Her2-stained breast tissue biopsies.</li>
-          <li>Use the BioGames platform for two weeks during which you will have unlimited access to the platform to practice and compete with other participants in scoring biopsies.</li>
-          <li>At the end of the study period, you will complete a post-test to assess any improvements in your diagnostic skills.</li>
-        </ul>
-
-        <h4 className="font-semibold">HOW MANY PEOPLE ARE EXPECTED TO PARTICIPATE</h4>
-        <p>The study aims to recruit a maximum of 20 participants at UCLA in the trial phase, and 2500 participants nationally across medical residency programs in the national phase.</p>
-
-        <h4 className="font-semibold">ARE THERE ANY RISKS IF I PARTICIPATE?</h4>
-        <p>There are no known risks or discomforts associated with participation in this study. However, if you feel any discomfort while using the platform, you may stop at any time.</p>
-
-        <h4 className="font-semibold">ARE THERE ANY BENEFITS IF I PARTICIPATE?</h4>
-        <p>We cannot promise any benefits to others from your taking part in this research. However, the study may benefit others by enhancing their diagnostic skill and accurately score Her2-stained breast tissue biopsies in the future.</p>
-
-        <h4 className="font-semibold">What other choices do I have if I choose not to participate?</h4>
-        <p>Your participation in this study is entirely voluntary. You may refuse to participate or withdraw from the study at any time without penalty or loss of benefits to which you are otherwise entitled. If you choose to withdraw, your data will be discarded.</p>
-
-        <h4 className="font-semibold">HOW WILL INFORMATION ABOUT ME AND MY PARTICIPATION BE KEPT CONFIDENTIAL?</h4>
-        <p>The researchers will do their best to make sure that your private information is kept confidential... (rest of paragraphs truncated for brevity)</p>
-        <p className="italic">A full study information sheet will also be emailed to you upon registration.</p>
-      </div>
-
-      {success ? (
-        <div className="bg-green-100 border-l-4 border-green-500 p-4">
-          <p className="text-green-700">
-            Registration successful! Please check your email for your unique ID.
-            You will be redirected to the pre-test menu shortly...
-          </p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Register to Participate</h2>
-          <p className="mb-4">
-            To participate, please enter your @ucla.edu or @mednet.ucla.edu email address below. 
-            We'll send you a unique ID that you can use to track your progress.
-          </p>
-          
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="youremail@ucla.edu or youremail@mednet.ucla.edu"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                required
-              />
-              {error && (
-                <p className="mt-2 text-sm text-red-600">{error}</p>
-              )}
-            </div>
-
-            <div className="mb-4 flex items-start">
-            <input
-              type="checkbox"
-              id="agreement"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-1 mr-2"
-              required
-            />
-            <label htmlFor="agreement" className="text-med text-gray-700">
-              I confirm that I have read and understood the study instructions.
-            </label>
-            </div>
-            
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full text-white bg-primary-500 py-2 px-4 transition-colors duration-200 ease-in-out hover:bg-blue-700 disabled:bg-white disabled:text-white"
-            >
-            {loading ? 'Processing...' : 'Join Study'}
-            </button>
-
-          </form>
-        </div>
-      )}
     </div>
   );
 }

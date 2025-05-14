@@ -109,7 +109,7 @@ impl IntoResponse for ServerError {
 #[derive(Deserialize, Validate)]
 pub struct CreateGameRequest {
     #[validate(length(min = 1, max = 32, message = "Must be between 1 and 32 characters"))]
-    pub username: String
+    pub user_id: String
 }
 
 #[derive(Serialize)]

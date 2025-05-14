@@ -6,7 +6,8 @@ use axum::extract::Query;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use axum::Json;
-use crate::schema::registered_users::dsl;
+use crate::schema::registered_users::dsl as rudsl;
+use serde_json::json;
 
 // use diesel::result::Error;
 // use tracing::{debug, error};
@@ -85,20 +86,34 @@ pub async fn create_game(
 
     use crate::schema::games::dsl as gdsl;
 
-    // Lookup display-username from registered_users by user_id (body.username)
-    let real_username: String = match dsl::registered_users
-        .filter(dsl::user_id.eq(&body.username))
-        .select(dsl::username)
+    // Lookup display-username from registered_users by user_id (now body.user_id)
+    let real_username: String = match rudsl::registered_users
+        .filter(rudsl::user_id.eq(&body.user_id))
+        .select(rudsl::username)
         .first::<Option<String>>(connection)
-        .unwrap_or(None)
     {
-        Some(u) => u,
-        None => {
+        Ok(db_username_value_option) => {
+            if let Some(name_str) = db_username_value_option {
+                name_str
+            } else {
+                // The user_id was found, but their username column in the DB is NULL.
+                return (
+                    StatusCode::BAD_REQUEST,
+                    format!("User ID '{}' was found, but no username is set for it. Please register a username.", body.user_id),
+                )
+                .into_response();
+            }
+        },
+        Err(diesel::NotFound) => { // No user record found for the given body.user_id
             return (
                 StatusCode::BAD_REQUEST,
-                format!("No registered username found for user_id '{}'", body.username),
+                format!("No registered user found for User ID '{}'", body.user_id),
             )
             .into_response();
+        }
+        Err(e) => { // Some other database error occurred
+            event!(Level::ERROR, "Database error when fetching username for User ID {}: {:?}", body.user_id, e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve user data due to a database error.").into_response();
         }
     };
 
@@ -134,18 +149,43 @@ pub async fn create_game(
 
     if !allowed {
         tracing::debug!(
-            "Game creation denied - User: {}, Mode: {}, Counts - Pretest: {}, Training: {}, Posttest: {}",
-            body.username,
+            "Game creation denied - User ID: {}, Real Username: {}, Mode: {}, Counts - Pretest: {}, Training: {}, Posttest: {}",
+            body.user_id,
+            real_username,
             requested_mode,
             pretest_count,
             training_count,
             posttest_count
         );
+
+        if (requested_mode == "pretest" && pretest_count > 0) || (requested_mode == "posttest" && posttest_count > 0) {
+            let existing_game_id_option: Option<i32> = gdsl::games
+                .filter(gdsl::username.eq(&real_username)
+                .and(gdsl::game_type.eq(requested_mode)))
+                .order(gdsl::id.desc())
+                .select(gdsl::id)
+                .first::<i32>(connection)
+                .ok();
+            
+            if let Some(existing_id) = existing_game_id_option {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({
+                        "error": format!("An active {} game (ID: {}) already exists for this user.", requested_mode, existing_id),
+                        "message": format!("Game limit reached or prerequisites not met for {} mode", requested_mode),
+                        "existing_game_id": existing_id
+                    }))
+                ).into_response();
+            }
+        }
+
         return (
             StatusCode::BAD_REQUEST,
-            format!("Game limit reached or prerequisites not met for {} mode", requested_mode),
-        )
-            .into_response();
+            Json(json!({
+                "error": format!("Game limit reached or prerequisites not met for {} mode", requested_mode),
+                "message": format!("Game limit reached or prerequisites not met for {} mode", requested_mode)
+            }))
+        ).into_response();
     }
 
     let is_test = requested_mode == "posttest" || requested_mode == "pretest";
@@ -203,8 +243,10 @@ pub async fn create_game(
         .bind::<diesel::sql_types::Array<Integer>, _>(&*TEST_IMAGE_IDS)
         .get_results(connection).expect("Error getting challenges");
 
+    tracing::debug!("Number of challenges inserted/returned for game {}: {}", game.id, challenges.len());
+
     if challenges.is_empty() {
-        event!(Level::ERROR, "no HER2 cores found");
+        event!(Level::ERROR, "no HER2 cores found for game {}", game.id);
 
         diesel::delete(
             diesel::QueryDsl::filter(gdsl::games, gdsl::id.eq(game.id))

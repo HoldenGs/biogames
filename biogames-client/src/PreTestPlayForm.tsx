@@ -1,5 +1,5 @@
 import { Formik, Form, Field, ErrorMessage, FormikHelpers } from "formik";
-import { setUsername, setGameMode } from "./Auth";
+import { setUsername, setGameMode, getGameMode } from "./Auth";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "./config";
 import { useState, useEffect } from "react";
@@ -77,6 +77,7 @@ function PreTestPlayForm({ mode }: PreTestPlayFormProps) {
                         setUsername(usernameData.username);
                     }
                     setGameMode('pretest');
+                    console.log(`[PreTestPlayForm] User already has a username. Mode prop: ${mode}, Auth gameMode set to: ${getGameMode()}. Navigating to /pretest/game`);
                     navigate('/pretest/game', { replace: true });
                     return;
                 }
@@ -108,6 +109,7 @@ function PreTestPlayForm({ mode }: PreTestPlayFormProps) {
             if (responseData.username) {
                 setUsername(responseData.username);
                 setGameMode('pretest');
+                console.log(`[PreTestPlayForm] Username registered. Mode prop: ${mode}, Auth gameMode set to: ${getGameMode()}. Navigating to /pretest/game`);
                 navigate('/pretest/game', { replace: true });
             } else {
                 setFieldError('username', 'Missing user ID in response');

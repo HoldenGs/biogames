@@ -44,6 +44,14 @@ const router = createHashRouter([
                 element: <GamePage mode="training" />
             },
             {
+                path: 'game/:gameId',
+                element: <GamePage mode="training" />
+            },
+            {
+                path: 'game/:gameId/:challengeId',
+                element: <GamePage mode="training" />
+            },
+            {
                 path: 'games/:id/results',
                 element: <ResultsPage mode="training" />
             },
@@ -66,6 +74,14 @@ const router = createHashRouter([
                 element: <GamePage mode="pretest" />
             },
             {
+                path: 'game/:gameId',
+                element: <GamePage mode="pretest" />
+            },
+            {
+                path: 'game/:gameId/:challengeId',
+                element: <GamePage mode="pretest" />
+            },
+            {
                 path: 'games/:id/results',
                 element: <ResultsPage mode="pretest" />
             },
@@ -85,6 +101,14 @@ const router = createHashRouter([
             },
             {
                 path: 'game',
+                element: <GamePage mode="posttest" />
+            },
+            {
+                path: 'game/:gameId',
+                element: <GamePage mode="posttest" />
+            },
+            {
+                path: 'game/:gameId/:challengeId',
                 element: <GamePage mode="posttest" />
             },
             {
