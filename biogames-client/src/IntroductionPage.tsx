@@ -71,42 +71,42 @@ function IntroductionPage() {
             </p>
             <p className="mb-6 text-gray-600">
               To begin, please enter your <strong>@ucla.edu</strong> or <strong>@mednet.ucla.edu</strong> email address below. We will email you a unique User ID that you will need to use throughout the study.
-            </p>
+          </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
-                <input 
-                  type="email" 
-                  id="email" 
+              <input
+                type="email"
+                id="email"
                   value={emailInput} 
                   onChange={(e) => setEmailInput(e.target.value)} 
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   placeholder="your_email@ucla.edu"
-                  required 
-                />
-              </div>
+                required
+              />
+            </div>
               <div className="flex items-center">
-                <input
+            <input
                   id="agree"
                   name="agree"
-                  type="checkbox"
-                  checked={agreed}
-                  onChange={(e) => setAgreed(e.target.checked)}
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
+            />
                 <label htmlFor="agree" className="ml-2 block text-sm text-gray-900">
                   I have read the information above and agree to participate in the study.
-                </label>
-              </div>
-              <button 
-                type="submit" 
+            </label>
+            </div>
+            <button
+              type="submit"
                 disabled={loading || !agreed}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
-              >
+            >
                 {loading ? 'Registering...' : 'Register and Get User ID'}
-              </button>
+            </button>
               {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-            </form>
+          </form>
           </>
         ) : (
           <div className="text-center">
@@ -114,8 +114,8 @@ function IntroductionPage() {
             <p className="text-gray-700 mb-2">Your unique User ID has been emailed to you.</p>
             <p className="text-gray-700 mb-6">Please check your email and save your User ID. You will need it to log in and play.</p>
             <p className="text-gray-700">You will be redirected to the Pre-Test Menu shortly...</p>
-          </div>
-        )}
+        </div>
+      )}
 
         <hr className="my-6" />
 
