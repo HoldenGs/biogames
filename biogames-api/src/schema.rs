@@ -13,6 +13,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    email_registry (id) {
+        id -> Int4,
+        email_hash -> Text,
+    }
+}
+
+diesel::table! {
     games (id) {
         id -> Int4,
         #[max_length = 32]
@@ -39,6 +46,7 @@ diesel::table! {
     registered_users (id) {
         id -> Int4,
         user_id -> Text,
+        email -> Nullable<Text>,
         #[max_length = 32]
         username -> Nullable<Varchar>,
     }
@@ -49,6 +57,7 @@ diesel::joinable!(challenges -> her2_cores (core_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     challenges,
+    email_registry,
     games,
     her2_cores,
     registered_users,
