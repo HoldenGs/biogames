@@ -22,6 +22,7 @@ function Menu({ mode }: MenuProps) {
     const [showInstructions, setShowInstructions] = useState(false);
     const [screenTooSmall, setScreenTooSmall] = useState(false);
     const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+    const [isInitialImageLoadingForPlay, setIsInitialImageLoadingForPlay] = useState(false);
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
@@ -65,34 +66,43 @@ function Menu({ mode }: MenuProps) {
     useEffect(() => {
         if (previewCoreData?.her2_core_id) {
             const imageUrl = `${API_BASE_URL}/api/her2_core_images/${previewCoreData.her2_core_id}`;
-            setPreviewImageUrl(imageUrl);
 
             let link = document.querySelector("link[rel='preload'][as='image'][data-preview-image]") as HTMLLinkElement;
             if (!link) {
                 link = document.createElement('link');
                 link.rel = 'preload';
                 link.as = 'image';
-                link.setAttribute('data-preview-image', 'true'); // Custom attribute to identify our link
+                link.setAttribute('data-preview-image', 'true');
                 document.head.appendChild(link);
             }
             link.href = imageUrl;
 
+            setIsInitialImageLoadingForPlay(true);
+            const img = new Image();
+            img.onload = () => {
+                console.log("[Menu] Prefetched image loaded successfully via Image():", imageUrl);
+                setIsInitialImageLoadingForPlay(false);
+            };
+            img.onerror = () => {
+                console.error("[Menu] Prefetched image failed to load via Image():", imageUrl);
+                setIsInitialImageLoadingForPlay(false);
+            };
+            img.src = imageUrl;
+
             return () => {
-                // Cleanup: remove the link when the component unmounts or the image URL changes
                 if (link && link.parentNode) {
                     link.parentNode.removeChild(link);
                 }
-                setPreviewImageUrl(null); // Reset image URL on cleanup
+                setIsInitialImageLoadingForPlay(false);
             };
         } else {
-            // If no core data, ensure any existing preload link is removed and URL is null
             const link = document.querySelector("link[rel='preload'][as='image'][data-preview-image]") as HTMLLinkElement;
             if (link && link.parentNode) {
                 link.parentNode.removeChild(link);
             }
-            setPreviewImageUrl(null);
+            setIsInitialImageLoadingForPlay(false);
         }
-    }, [previewCoreData]); // Dependency array includes previewCoreData
+    }, [previewCoreData]);
 
     return (
         <>
@@ -161,13 +171,19 @@ function Menu({ mode }: MenuProps) {
                                 : "Enter your User ID below and click \"Play\" to start the game."}
                         </p>
 
+                        {isInitialImageLoadingForPlay && (
+                            <div className="text-sm text-gray-600 my-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                                Preparing first challenge image... Please wait.
+                            </div>
+                        )}
+
                         <div>
                             <p>If you don't have a User ID, go to the introduction page and input your mednet email address.</p>
                         </div>
 
                         {mode === "pretest" 
-                            ? <PreTestPlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} /> 
-                            : <PlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} />}
+                            ? <PreTestPlayForm mode={mode} disabled={screenTooSmall || isInitialImageLoadingForPlay} initialHer2CoreId={previewCoreData?.her2_core_id} /> 
+                            : <PlayForm mode={mode} disabled={screenTooSmall || isInitialImageLoadingForPlay} initialHer2CoreId={previewCoreData?.her2_core_id} />}
                     </div>
 
                     <div className="flex flex-col gap-2">

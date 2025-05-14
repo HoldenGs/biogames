@@ -1,5 +1,5 @@
 import { Formik, Form, Field, ErrorMessage, FormikHelpers } from "formik";
-import { setUsername, setGameMode, getGameMode } from "./Auth";
+import { setUsername, setGameMode, getGameMode, setUserId } from "./Auth";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "./config";
 import { useState, useEffect } from "react";
@@ -15,7 +15,7 @@ interface PreTestPlayFormProps {
     initialHer2CoreId?: number;
 }
 
-function PreTestPlayForm({ mode, initialHer2CoreId }: PreTestPlayFormProps) {
+function PreTestPlayForm({ mode, initialHer2CoreId, disabled }: PreTestPlayFormProps) {
     const navigate = useNavigate();
     
     const initialValues: PreTestPlayFormValues = { 
@@ -77,6 +77,7 @@ function PreTestPlayForm({ mode, initialHer2CoreId }: PreTestPlayFormProps) {
                     if (usernameData.username) {
                         setUsername(usernameData.username);
                     }
+                    setUserId(values.user_id);
                     setGameMode('pretest');
                     console.log(`[PreTestPlayForm] User already has username. initialHer2CoreId to be passed in state: ${initialHer2CoreId}`);
                     console.log(`[PreTestPlayForm] User already has a username. Mode prop: ${mode}, Auth gameMode set to: ${getGameMode()}. Navigating to /pretest/game`);
@@ -110,6 +111,7 @@ function PreTestPlayForm({ mode, initialHer2CoreId }: PreTestPlayFormProps) {
             // Successfully registered - use the generated user_id from backend
             if (responseData.username) {
                 setUsername(responseData.username);
+                setUserId(values.user_id);
                 setGameMode('pretest');
                 console.log(`[PreTestPlayForm] Username registered. initialHer2CoreId to be passed in state: ${initialHer2CoreId}`);
                 console.log(`[PreTestPlayForm] Username registered. Mode prop: ${mode}, Auth gameMode set to: ${getGameMode()}. Navigating to /pretest/game`);
@@ -178,9 +180,9 @@ function PreTestPlayForm({ mode, initialHer2CoreId }: PreTestPlayFormProps) {
                         <button
                             className="bg-primary-500 text-white px-4 py-2 w-full rounded-md"
                             type="submit"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || disabled}
                         >
-                            {isSubmitting ? 'Processing...' : 'Start Pre-Test'}
+                            {isSubmitting || disabled ? 'Processing...' : 'Start Pre-Test'}
                         </button>
                     </div>
                     
