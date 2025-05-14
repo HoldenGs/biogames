@@ -11,6 +11,7 @@ function IntroductionPage() {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
   const [agreed, setAgreed] = useState(false);
+  const emailIsValid = emailInput.endsWith('@ucla.edu') || emailInput.endsWith('@mednet.ucla.edu');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +86,7 @@ function IntroductionPage() {
                 required
               />
             </div>
-              <div className="flex items-center">
+            <div className="flex items-center">
             <input
                   id="agree"
                   name="agree"
@@ -100,7 +101,7 @@ function IntroductionPage() {
             </div>
             <button
               type="submit"
-                disabled={loading || !agreed}
+                disabled={loading || !agreed || !emailIsValid}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-500 hover:bg-primary-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
             >
                 {loading ? 'Registering...' : 'Register and Get User ID'}
