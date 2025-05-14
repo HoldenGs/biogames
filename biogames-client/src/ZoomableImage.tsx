@@ -85,7 +85,7 @@ const ZoomableImage = memo(function ZoomableImage({ src, alt = '', className = '
 
   return (
     // Ensure container takes up space even before image loads fully
-    <div className="relative overflow-hidden h-[75vh] w-full flex items-center justify-center bg-gray-100"> 
+    <div className="relative aspect-square w-[75vh] max-w-full flex items-center justify-center bg-gray-100">
       {/* Image itself */}
       <img 
         key={src} // Add key to force re-mount on src change
