@@ -7,6 +7,7 @@ use once_cell::sync::Lazy;
 use serde::Deserialize;
 use axum::Json;
 use crate::schema::registered_users::dsl as rudsl;
+use crate::schema::challenges::dsl as ccdsl;
 use serde_json::json;
 
 // use diesel::result::Error;
@@ -16,7 +17,6 @@ use crate::{
     establish_db_connection,
     models::{Challenge, CreateGameRequest, Game, GameResponse, ValidatedRequest},
     schema::games::dsl::*
-
 };
 
 static TEST_IMAGE_IDS: Lazy<Vec<i32>> = Lazy::new(|| {
@@ -191,7 +191,7 @@ pub async fn create_game(
     let is_test = requested_mode == "posttest" || requested_mode == "pretest";
     let mode = requested_mode.to_string();
     
-    let challenges_per_game = if is_test { 50 } else { 20 };
+    let mut challenges_per_game = if is_test { 50 } else { 20 };
 
     {
         tracing::debug!("Creating game for user: {}, game mode: {}", real_username, params.mode.as_deref().unwrap_or("uhoh"));
@@ -202,48 +202,119 @@ pub async fn create_game(
         .values((username.eq(real_username.clone()), max_score.eq(challenges_per_game * 5), game_type.eq(&mode)))
         .get_result::<Game>(connection).unwrap();
 
-    // let game = match game {
-    //     Ok(game) => {
-    //         tracing::debug!("Game created: {:?}", game);
-    //         game
-    //     }
-    //     Err(e) => {
-    //         event!(Level::ERROR, "error creating game: {:?}", e);
-    //         return (StatusCode::INTERNAL_SERVER_ERROR, "Error creating game").into_response();
-    //     }
-    // };
+    let mut final_challenges: Vec<Challenge> = Vec::new();
 
-    // select 20 random cores and create challenges with them for this game
-    let query = if is_test {
-        r#"
-        insert into challenges (game_id, core_id)
-        select $1, id from her2_cores
-        where id = ANY($3)
-        order by random()
-        limit $2
-        returning *
-        "#
-    } else {
-        r#"
-        insert into challenges (game_id, core_id)
-        select $1, id from her2_cores
-        where id != ALL($3)
-        order by random()
-        limit $2
-        returning *
-        "#
-    };
+    if let Some(initial_core_id) = body.initial_her2_core_id {
+        if challenges_per_game == 0 { // Should not happen with current numbers, but good check
+            event!(Level::ERROR, "challenges_per_game is 0, cannot insert initial challenge for game {}", game.id);
+            // Consider deleting the game record here if no challenges can be added
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Cannot create a game with zero challenges").into_response();
+        }
 
-    tracing::debug!("Creating challenges for game: {}", game.id);
-    tracing::debug!("Query: {}", query);
+        // Insert the initial challenge directly
+        match diesel::insert_into(ccdsl::challenges)
+            .values((ccdsl::game_id.eq(game.id), ccdsl::core_id.eq(initial_core_id)))
+            .get_result::<Challenge>(connection) 
+        {
+            Ok(initial_challenge) => {
+                final_challenges.push(initial_challenge);
+                challenges_per_game -= 1; // Decrement count for remaining challenges
+            }
+            Err(e) => {
+                event!(Level::ERROR, "Failed to insert initial challenge with core_id {}: {:?} for game {}", initial_core_id, e, game.id);
+                // Rollback game creation or handle error appropriately
+                // For now, delete the created game record
+                let _ = diesel::delete(games.filter(id.eq(game.id))).execute(connection);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to set initial challenge").into_response();
+            }
+        }
+    }
 
-    let challenges: Vec<Challenge> = sql_query(query)
-        .bind::<Integer, _>(game.id)
-        .bind::<Integer, _>(challenges_per_game)
-        .bind::<diesel::sql_types::Array<Integer>, _>(&*TEST_IMAGE_IDS)
-        .get_results(connection).expect("Error getting challenges");
+    if challenges_per_game > 0 { // If we still need to fetch more challenges
+        let query_remaining = if is_test {
+            // For test modes, select from TEST_IMAGE_IDS, excluding initial_core_id if it was one of them
+            // AND id != $INITIAL_ID (if initial_core_id was provided and is in TEST_IMAGE_IDS, this is implicitly handled by not re-selecting it)
+            // More robustly, explicitly exclude it:
+            if body.initial_her2_core_id.is_some() {
+                 r#"
+                INSERT INTO challenges (game_id, core_id)
+                SELECT $1, id FROM her2_cores
+                WHERE id = ANY($3) AND id != $4 
+                ORDER BY random()
+                LIMIT $2
+                RETURNING *
+                "#
+            } else { // No initial_core_id, select all from TEST_IMAGE_IDS
+                 r#"
+                INSERT INTO challenges (game_id, core_id)
+                SELECT $1, id FROM her2_cores
+                WHERE id = ANY($3)
+                ORDER BY random()
+                LIMIT $2
+                RETURNING *
+                "#
+            }
+        } else {
+            // For training mode, select NOT from TEST_IMAGE_IDS, excluding initial_core_id
+            if body.initial_her2_core_id.is_some() {
+                r#"
+                INSERT INTO challenges (game_id, core_id)
+                SELECT $1, id FROM her2_cores
+                WHERE id != ALL($3) AND id != $4 
+                ORDER BY random()
+                LIMIT $2
+                RETURNING *
+                "#
+            } else { // No initial_core_id, select all not in TEST_IMAGE_IDS
+                r#"
+                INSERT INTO challenges (game_id, core_id)
+                SELECT $1, id FROM her2_cores
+                WHERE id != ALL($3)
+                ORDER BY random()
+                LIMIT $2
+                RETURNING *
+                "#
+            }
+        };
 
-    tracing::debug!("Number of challenges inserted/returned for game {}: {}", game.id, challenges.len());
+        tracing::debug!("Creating {} remaining challenges for game: {}", challenges_per_game, game.id);
+        tracing::debug!("Query for remaining: {}", query_remaining);
+
+        let remaining_challenges_result = if let Some(initial_id) = body.initial_her2_core_id {
+             sql_query(query_remaining)
+                .bind::<Integer, _>(game.id)
+                .bind::<Integer, _>(challenges_per_game) // Use updated count
+                .bind::<diesel::sql_types::Array<Integer>, _>(&*TEST_IMAGE_IDS)
+                .bind::<Integer, _>(initial_id) // Bind the initial_id to exclude
+                .get_results::<Challenge>(connection)
+        } else {
+             sql_query(query_remaining)
+                .bind::<Integer, _>(game.id)
+                .bind::<Integer, _>(challenges_per_game)
+                .bind::<diesel::sql_types::Array<Integer>, _>(&*TEST_IMAGE_IDS)
+                .get_results::<Challenge>(connection)
+        };
+
+        match remaining_challenges_result {
+            Ok(mut fetched_challenges) => {
+                final_challenges.append(&mut fetched_challenges);
+            }
+            Err(e) => {
+                event!(Level::ERROR, "Error fetching remaining challenges for game {}: {:?}", game.id, e);
+                 // If initial challenge was inserted, it's still there.
+                 // If no challenges at all, game might be invalid.
+                if final_challenges.is_empty() {
+                    let _ = diesel::delete(games.filter(id.eq(game.id))).execute(connection);
+                    return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to fetch any challenges for the game").into_response();
+                }
+            }
+        }
+    }
+    
+    // Replace the old `challenges` variable with `final_challenges`
+    let challenges = final_challenges;
+
+    tracing::debug!("Total number of challenges for game {}: {}", game.id, challenges.len());
 
     if challenges.is_empty() {
         event!(Level::ERROR, "no HER2 cores found for game {}", game.id);

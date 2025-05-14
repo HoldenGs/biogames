@@ -30,7 +30,9 @@ use biogames_api::{
         check_game_type::check_game_type,
         check_username::check_username,
         generate_user_id::generate_user_id,
-        register_with_username::register_with_username
+        register_with_username::register_with_username,
+        get_preview_core_id::*,
+        get_her2_core_image::*
     },
     establish_db_connection
 };
@@ -69,6 +71,8 @@ async fn main() {
         .route("/check-username/:user_id", get(check_username))
         .route("/generate-user-id", post(generate_user_id))
         .route("/register-with-username", post(register_with_username))
+        .route("/api/preview_core_id", get(get_preview_core_id))
+        .route("/api/her2_core_images/:her2_core_id", get(get_her2_core_image))
         .layer(cors);
 
 

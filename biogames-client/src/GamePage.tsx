@@ -1,8 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Game from "./Game";
-import CurrentChallengeResponse from "./CurrentChallengeResponse";
+// Ensure this interface matches the backend and is used by useQuery
+interface CurrentChallengeResponse {
+    id?: number;         // Challenge ID from challenges table
+    core_id?: number;    // core_id from her2_cores table, linked to the challenge
+    completed_challenges: number;
+    total_challenges: number;
+}
+// Remove the old import if it's defined elsewhere and causing conflicts
+// import CurrentChallengeResponse from "./CurrentChallengeResponse"; // Might be this line if it's a separate file import
 import logo from './assets/logo3.webp';
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams, useLocation } from "react-router-dom";
 import { getUsername, getGameMode, setGameMode as AuthSetGameMode, getUserId } from "./Auth";
 import React, { useEffect, useState, useRef } from "react";
 import { API_BASE_URL } from './config';
@@ -15,9 +23,12 @@ interface GamePageProps {
 function GamePage({ mode }: GamePageProps) {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const location = useLocation();
     const { gameId: gameIdFromUrl, challengeId: challengeIdFromUrl } = useParams<{ gameId?: string, challengeId?: string }>();
 
-    console.log(`[GamePage] TOP RENDER. Mode prop: ${mode}, gameIdFromUrl: ${gameIdFromUrl}, challengeIdFromUrl: ${challengeIdFromUrl}, Auth gameMode: ${getGameMode()}`);
+    const initialHer2CoreIdFromState = location.state?.initialHer2CoreId as number | undefined;
+
+    console.log(`[GamePage] TOP RENDER. Mode prop: ${mode}, gameIdFromUrl: ${gameIdFromUrl}, challengeIdFromUrl: ${challengeIdFromUrl}, Auth gameMode: ${getGameMode()}, initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
 
     const [activeGameId, setActiveGameId] = useState<number | null>(null);
     const initialCreationAttemptedRef = useRef(false);
@@ -44,12 +55,13 @@ function GamePage({ mode }: GamePageProps) {
                 if (response.status === 404) specificError = `No challenge data found for game ${activeGameId} (404).`;
                 throw new Error(specificError);
             }
-            const data = await response.json();
+            const data: CurrentChallengeResponse = await response.json(); // Ensure data is typed here
             console.log(`[GamePage] challengeQuery SUCCESS. Mode: ${mode}, Auth GameMode: ${getGameMode()}. Fetched data:`, JSON.parse(JSON.stringify(data)));
-            console.log(`[GamePage] challengeQuery SUCCESS. Challenge ID from API: ${data?.id}`);
+            console.log(`[GamePage] challengeQuery SUCCESS. Challenge ID from API: ${data?.id}, Core ID from API: ${data?.core_id}`);
             if (data.id && (String(data.id) !== challengeIdFromUrl || !challengeIdFromUrl)) {
-                console.log(`[GamePage] challengeQuery - Navigating to update challengeId. Mode: ${mode}. Target: /${mode}/game/${activeGameId}/${data.id}`);
-                navigate(`/${mode}/game/${activeGameId}/${data.id}`, { replace: true });
+                const challengePath = mode === 'training' ? `/game/${activeGameId}/${data.id}` : `/${mode}/game/${activeGameId}/${data.id}`;
+                console.log(`[GamePage] challengeQuery - Navigating to update challengeId. Mode: ${mode}. Target: ${challengePath}. Will pass initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
+                navigate(challengePath, { replace: true, state: { initialHer2CoreId: initialHer2CoreIdFromState } });
             }
             return data;
         },
@@ -69,12 +81,21 @@ function GamePage({ mode }: GamePageProps) {
 
     const createGameAsync = async (): Promise<Game> => {
         if (!authUserId) throw new Error("User ID not found, cannot create game.");
-        console.debug(`[GamePage] createGameAsync() called: mode=${mode}, user_id='${authUserId}'`);
+        
+        const requestBody: { user_id: string; initial_her2_core_id?: number } = {
+            user_id: authUserId
+        };
+
+        if (initialHer2CoreIdFromState) {
+            requestBody.initial_her2_core_id = initialHer2CoreIdFromState;
+        }
+
+        console.debug(`[GamePage] createGameAsync() called: mode=${mode}, body:`, JSON.stringify(requestBody));
         const url = `${API_BASE_URL}/games?mode=${mode}` + (mode === 'pretest' ? '&num_challenges=50' : '');
         let res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: authUserId })
+            body: JSON.stringify(requestBody)
         });
         if (res.status === 400) {
             let errorResponseJson: any = {};
@@ -100,9 +121,11 @@ function GamePage({ mode }: GamePageProps) {
 
     const createGameMutation = useMutation<Game, Error, void>(createGameAsync, {
         onSuccess: (newGameData) => {
-            console.log(`[GamePage] createGameMutation SUCCESS. Mode: ${mode}, Auth GameMode: ${getGameMode()}. New game ID: ${newGameData.id}. Navigating to: /${mode}/game/${newGameData.id}`);
+            console.log(`[GamePage] createGameMutation SUCCESS. Mode: ${mode}, Auth GameMode: ${getGameMode()}. New game ID: ${newGameData.id}.`);
+            const gamePath = mode === 'training' ? `/game/${newGameData.id}` : `/${mode}/game/${newGameData.id}`;
+            console.log(`[GamePage] Navigating to: ${gamePath}. Will pass initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
             setActiveGameId(newGameData.id);
-            navigate(`/${mode}/game/${newGameData.id}`, { replace: true });
+            navigate(gamePath, { replace: true, state: { initialHer2CoreId: initialHer2CoreIdFromState } });
         },
         onError: (error) => {
             console.error(`[GamePage] createGameMutation FAILED. Mode: ${mode}, Auth GameMode: ${getGameMode()}. Error:`, error.message);
@@ -176,7 +199,7 @@ function GamePage({ mode }: GamePageProps) {
         const nextChallengeIndex = currentChallengeData.completed_challenges + 1;
         queryClient.fetchQuery<CurrentChallengeResponse>({
             queryKey: ['challenge', activeGameId, 'prefetch_next', nextChallengeIndex],
-            queryFn: async () => {
+        queryFn: async () => {
                 const url = `${API_BASE_URL}/games/${activeGameId}/challenge?completed_count=1`;
                 const response = await fetch(url);
                 if (!response.ok) { console.error('[GamePage] Prefetch metadata fetch failed:', response.status, await response.text()); throw new Error('Prefetch metadata failed'); }
@@ -188,7 +211,7 @@ function GamePage({ mode }: GamePageProps) {
                         link.rel = 'preload'; link.as = 'image'; link.href = nextImageUrl;
                         document.head.appendChild(link);
                     }
-                }
+            }
                 return data;
             },
         }).catch((error) => {
@@ -202,7 +225,7 @@ function GamePage({ mode }: GamePageProps) {
             await fetch(`${API_BASE_URL}/challenges/${challengeQuery.data.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ "guess": guess }) });
         },
         networkMode: "always",
-        onSuccess: () => { 
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['challenge', activeGameId]}); 
         },
         onError: (error) => { console.error("Score submission failed:", error); }
@@ -262,13 +285,35 @@ function GamePage({ mode }: GamePageProps) {
         if (finalAuthGameMode === 'pretest' || finalAuthGameMode === 'posttest') {
             if (finalAuthGameMode === 'pretest') { AuthSetGameMode('training'); }
             return (<Navigate to={`/menu`}/>);
-        } else { 
+        } else {
             return (<Navigate to={`/games/${activeGameId}/results`}/>);
         }
     }
     
     if (!challengeQuery.data?.id) {
         return <div className="p-4 text-center">Loading current challenge details...</div>;
+    }
+
+    // console.log an entire object for better inspection
+    console.log("[GamePage] challengeQuery.data for URL decision:", JSON.parse(JSON.stringify(challengeQuery.data)));
+
+    // Conditionally construct imageUrlToDisplay
+    let imageUrlToDisplay: string = ''; // Default to empty or a placeholder
+    const currentChallengeObject = challengeQuery.data;
+    const currentChallengeId = currentChallengeObject?.id;
+    const currentChallengeCoreId = currentChallengeObject?.core_id;
+
+    // Log the critical values before the decision
+    console.log(`[GamePage] Values for image URL decision: initialHer2CoreIdFromState = ${initialHer2CoreIdFromState}, currentChallengeId = ${currentChallengeId}, currentChallengeCoreId = ${currentChallengeCoreId}`);
+
+    if (initialHer2CoreIdFromState && currentChallengeCoreId && currentChallengeCoreId === initialHer2CoreIdFromState) {
+        imageUrlToDisplay = `${API_BASE_URL}/api/her2_core_images/${initialHer2CoreIdFromState}`;
+        console.log(`[GamePage] Using PREVIEWED image URL for initial challenge (Core ID: ${initialHer2CoreIdFromState}): ${imageUrlToDisplay}`);
+    } else if (currentChallengeId) {
+        imageUrlToDisplay = `${API_BASE_URL}/challenges/${currentChallengeId}/core?mode=${getGameMode()}`;
+        console.log(`[GamePage] Using STANDARD image URL for challenge (Challenge ID: ${currentChallengeId}, Core ID: ${currentChallengeCoreId}): ${imageUrlToDisplay}`);
+    } else {
+        console.log("[GamePage] No current challenge ID or core ID available to determine image URL.");
     }
 
     return (
@@ -282,7 +327,13 @@ function GamePage({ mode }: GamePageProps) {
                 <h3 className="text-lg md:text-2xl">Time: {overallTimeString}</h3>
             </div>
             <div>
-                <ZoomableImage src={`${API_BASE_URL}/challenges/${challengeQuery.data.id}/core?mode=${getGameMode()}`} className="max-h-[75vh]"/>
+                {imageUrlToDisplay ? (
+                    <ZoomableImage src={imageUrlToDisplay} className="max-h-[75vh]"/>
+                ) : (
+                    <div className="max-h-[75vh] flex items-center justify-center bg-gray-200">
+                        <p>Loading image...</p>
+                    </div>
+                )}
             </div>
             <div className="flex md:flex-col justify-between gap-2">
                 {[0, 1, 2, 3].map(scoreValue => (

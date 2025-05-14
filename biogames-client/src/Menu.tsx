@@ -4,7 +4,7 @@ import PlayForm from "./PlayForm";
 import PreTestPlayForm from "./PreTestPlayForm";
 import { useEffect, useState } from "react";
 import Instructions from "./Instructions";
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Leaderboard from './Leaderboard';
 import { API_BASE_URL } from './config';
 import { isAuthenticated, setGameMode } from './Auth';
@@ -14,11 +14,35 @@ interface MenuProps {
     mode: string;
 }
 
+interface PreviewCoreIdResponse {
+    her2_core_id: number;
+}
+
 function Menu({ mode }: MenuProps) {
     const [showInstructions, setShowInstructions] = useState(false);
     const [screenTooSmall, setScreenTooSmall] = useState(false);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+
+    const { 
+        data: previewCoreData,
+        isLoading: isLoadingPreviewCoreId,
+        isError: isErrorPreviewCoreId,
+        error: errorPreviewCoreId 
+    } = useQuery<PreviewCoreIdResponse, Error>({
+        queryKey: ['previewCoreId', mode],
+        queryFn: async () => {
+            const response = await fetch(`${API_BASE_URL}/api/preview_core_id?mode=${mode}`);
+            if (!response.ok) {
+                throw new Error('Network response was not ok when fetching preview core ID');
+            }
+            return response.json();
+        },
+        enabled: !!mode,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
 
     useEffect(() => {
         const checkScreenSize = () => {
@@ -37,6 +61,38 @@ function Menu({ mode }: MenuProps) {
         queryClient.invalidateQueries(['challenge']);
         queryClient.invalidateQueries(['leaderboard']);
     }, [queryClient]);
+
+    useEffect(() => {
+        if (previewCoreData?.her2_core_id) {
+            const imageUrl = `${API_BASE_URL}/api/her2_core_images/${previewCoreData.her2_core_id}`;
+            setPreviewImageUrl(imageUrl);
+
+            let link = document.querySelector("link[rel='preload'][as='image'][data-preview-image]") as HTMLLinkElement;
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'preload';
+                link.as = 'image';
+                link.setAttribute('data-preview-image', 'true'); // Custom attribute to identify our link
+                document.head.appendChild(link);
+            }
+            link.href = imageUrl;
+
+            return () => {
+                // Cleanup: remove the link when the component unmounts or the image URL changes
+                if (link && link.parentNode) {
+                    link.parentNode.removeChild(link);
+                }
+                setPreviewImageUrl(null); // Reset image URL on cleanup
+            };
+        } else {
+            // If no core data, ensure any existing preload link is removed and URL is null
+            const link = document.querySelector("link[rel='preload'][as='image'][data-preview-image]") as HTMLLinkElement;
+            if (link && link.parentNode) {
+                link.parentNode.removeChild(link);
+            }
+            setPreviewImageUrl(null);
+        }
+    }, [previewCoreData]); // Dependency array includes previewCoreData
 
     return (
         <>
@@ -110,8 +166,8 @@ function Menu({ mode }: MenuProps) {
                         </div>
 
                         {mode === "pretest" 
-                            ? <PreTestPlayForm mode={mode} disabled={screenTooSmall}/> 
-                            : <PlayForm mode={mode} disabled={screenTooSmall}/>}
+                            ? <PreTestPlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} /> 
+                            : <PlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} />}
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -136,12 +192,28 @@ function Menu({ mode }: MenuProps) {
                     </div>
                 </div>
 
-                <a href="https://doi.org/10.5858/2010-0454-RAR.1" target="_blank">
-                    <figure className="flex flex-col gap-1">
-                        <img src={paper} alt="Paper" className="border border-black"/>
-                        <figcaption className="text-xs">HER2: biology, detection, and clinical implications</figcaption>
+                {/* Preview Image Section - Replaces the old static image link */}
+                <div className="flex flex-col items-center justify-center border border-gray-300 p-2 min-h-[200px]">
+                    {isLoadingPreviewCoreId && <p>Loading preview image...</p>}
+                    {isErrorPreviewCoreId && (
+                        <p className="text-red-500">
+                            Error loading preview: {errorPreviewCoreId?.message || 'Unknown error'}
+                        </p>
+                    )}
+                    {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && previewImageUrl && (
+                        <figure className="flex flex-col gap-1 w-full">
+                            <img 
+                                src={previewImageUrl} 
+                                alt={`Preview for ${mode} mode`} 
+                                className="border border-black max-w-full h-auto max-h-[400px] object-contain"
+                            />
+                            <figcaption className="text-xs text-center">HER2 Core Preview ({mode})</figcaption>
                     </figure>
-                </a>
+                    )}
+                    {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && !previewImageUrl && (
+                        <p>No preview image available.</p>
+                    )}
+                </div>
             </div>
             <Leaderboard game_id={Number(7)}/>
         </div>

@@ -12,9 +12,10 @@ interface PreTestPlayFormValues {
 interface PreTestPlayFormProps {
     mode: string;
     disabled?: boolean;
+    initialHer2CoreId?: number;
 }
 
-function PreTestPlayForm({ mode }: PreTestPlayFormProps) {
+function PreTestPlayForm({ mode, initialHer2CoreId }: PreTestPlayFormProps) {
     const navigate = useNavigate();
     
     const initialValues: PreTestPlayFormValues = { 
@@ -77,8 +78,9 @@ function PreTestPlayForm({ mode }: PreTestPlayFormProps) {
                         setUsername(usernameData.username);
                     }
                     setGameMode('pretest');
+                    console.log(`[PreTestPlayForm] User already has username. initialHer2CoreId to be passed in state: ${initialHer2CoreId}`);
                     console.log(`[PreTestPlayForm] User already has a username. Mode prop: ${mode}, Auth gameMode set to: ${getGameMode()}. Navigating to /pretest/game`);
-                    navigate('/pretest/game', { replace: true });
+                    navigate('/pretest/game', { replace: true, state: { initialHer2CoreId } });
                     return;
                 }
             }
@@ -109,8 +111,9 @@ function PreTestPlayForm({ mode }: PreTestPlayFormProps) {
             if (responseData.username) {
                 setUsername(responseData.username);
                 setGameMode('pretest');
+                console.log(`[PreTestPlayForm] Username registered. initialHer2CoreId to be passed in state: ${initialHer2CoreId}`);
                 console.log(`[PreTestPlayForm] Username registered. Mode prop: ${mode}, Auth gameMode set to: ${getGameMode()}. Navigating to /pretest/game`);
-                navigate('/pretest/game', { replace: true });
+                navigate('/pretest/game', { replace: true, state: { initialHer2CoreId } });
             } else {
                 setFieldError('username', 'Missing user ID in response');
                 setSubmitting(false);

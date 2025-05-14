@@ -44,14 +44,17 @@ pub async fn get_current_challenge(
     // Defaults to 0, meaning the first uncompleted challenge.
     let target_uncompleted_index = params.completed_count.unwrap_or(0);
 
-    // Get the ID of the target uncompleted challenge
-    let target_challenge_id = all_challenges_for_game.iter()
+    // Get the ID and Core ID of the target uncompleted challenge
+    let target_challenge_details = all_challenges_for_game.iter()
         .filter(|(ch, _)| ch.guess.is_none()) // Only consider un-guessed challenges
-        .map(|(ch, _)| ch.id)               // Select their IDs
         .nth(target_uncompleted_index as usize); // Get the Nth one (0-indexed)
+
+    let target_challenge_id = target_challenge_details.map(|(ch, _)| ch.id);
+    let target_core_id = target_challenge_details.map(|(_, core)| core.id); // Extract core_id from Her2Core
 
     CurrentChallengeResponse {
         id: target_challenge_id,
+        core_id: target_core_id, // Populate the new field
         completed_challenges: actual_completed_in_db, // Always return actual completed count from DB
         total_challenges,
     }.into_response()

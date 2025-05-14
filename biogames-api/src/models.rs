@@ -109,7 +109,8 @@ impl IntoResponse for ServerError {
 #[derive(Deserialize, Validate)]
 pub struct CreateGameRequest {
     #[validate(length(min = 1, max = 32, message = "Must be between 1 and 32 characters"))]
-    pub user_id: String
+    pub user_id: String,
+    pub initial_her2_core_id: Option<i32>,
 }
 
 #[derive(Serialize)]
@@ -154,6 +155,7 @@ impl IntoResponse for GameResponse {
 #[derive(Serialize)]
 pub struct CurrentChallengeResponse {
     pub id: Option<i32>,
+    pub core_id: Option<i32>,
     pub completed_challenges: i32,
     pub total_challenges: i32
 }

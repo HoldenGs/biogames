@@ -12,9 +12,10 @@ interface PlayFormValues {
 interface PlayFormProps {
     mode: string;
     disabled?: boolean;
+    initialHer2CoreId?: number;
 }
 
-function PlayForm({ mode, disabled = false }: PlayFormProps) {
+function PlayForm({ mode, disabled = false, initialHer2CoreId }: PlayFormProps) {
     const navigate = useNavigate();
     const storedUserId = getUsername(); // may exist but we won't auto-fill
     
@@ -189,10 +190,10 @@ function PlayForm({ mode, disabled = false }: PlayFormProps) {
         
         if (localGameMode === 'pretest') {
             // Redirect to the pretest page for username registration
-            navigate(`/pretest/menu`);
+            navigate(`/pretest/menu`, { state: { initialHer2CoreId } });
         } else {
             setGameMode('training');
-            navigate('/game?mode=training');
+            navigate(`/game?mode=${localGameMode}`, { state: { initialHer2CoreId } });
         }
         
         setSubmitting(false);
