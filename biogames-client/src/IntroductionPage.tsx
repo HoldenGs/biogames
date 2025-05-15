@@ -125,13 +125,13 @@ function IntroductionPage() {
           <strong>Study Title:</strong> BioGames - A Game-Based Learning Platform for HER2 Scoring
         </p>
         <p className="mb-2 text-gray-600">
-          <strong>Principal Investigator:</strong> Dr. Holden Thorp, Professor, Department of Pathology & Laboratory Medicine, UCLA.
+          <strong>Principal Investigator:</strong> Dr. Aydogan Ozcan, Chancellor’s Professor at the Samueli School of Elecrical Engineering, Bioengineering; HHMI Professor at the Howard Hughes Medical Institute; Associate Director of the California NanoSystems Institute (CNSI), UCLA.
         </p>
         <p className="mb-2 text-gray-600">
           <strong>Purpose of the Study:</strong> To evaluate the effectiveness of a game-based learning platform in teaching HER2 scoring for breast cancer pathology.
         </p>
         <p className="mb-2 text-gray-600">
-          <strong>Procedures:</strong> Participants will register using their UCLA email, receive a User ID, and then complete a pre-test, a series of training games, and a post-test. Each part involves viewing tumor images and scoring HER2 expression.
+          <strong>Procedures:</strong> Participants will register using their MEDNET email, receive a User ID, and then complete a pre-test, a series of training games, and a post-test. Each part involves viewing breast tumor images and scoring HER2 expression.
         </p>
         <p className="mb-2 text-gray-600">
           <strong>Confidentiality:</strong> Your email will only be used to send you your User ID. All gameplay data will be associated with this anonymized User ID. Published results will not contain any personally identifiable information.
@@ -140,10 +140,10 @@ function IntroductionPage() {
           <strong>Voluntary Participation:</strong> Your participation is entirely voluntary. You may withdraw at any time without penalty.
         </p>
         <p className="mb-2 text-gray-600">
-          <strong>Contact Information:</strong> If you have any questions about the study, please contact Holden Thorp at <a href="mailto:holdengs@ucla.edu" className="text-blue-500 hover:underline">holdengs@ucla.edu</a>.
+          <strong>Contact Information:</strong> If you have any questions about the study, please contact Paloma Casteleiro Costa at <a href="mailto:casteleiro@ucla.edu" className="text-primary-500 hover:underline">casteleiro@ucla.edu</a>.
         </p>
          <p className="mb-2 text-gray-600">
-          <strong>IRB Approval:</strong> This study has been reviewed and approved by the UCLA Institutional Review Board (IRB#xxxxxxx).
+          <strong>IRB Approval:</strong> This study has been reviewed and approved by the UCLA Institutional Review Board (IRB-24-5794).
         </p>
       </div>
     </div>
