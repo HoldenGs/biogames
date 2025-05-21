@@ -8,6 +8,22 @@ body {
     font-family: sans-serif;
 }
 
+/* Override for specific Tailwind button background colors to combat unwanted transparency */
+/* Apply to buttons that use these classes if they are being overridden. */
+button.bg-red-500 {
+    background-color: #ef4444 !important; /* Tailwind's red-500 */
+}
+
+button.bg-gray-500 {
+    background-color: #6b7280 !important; /* Tailwind's gray-500 */
+}
+
+/* Add other button colors as needed, e.g.:
+button.bg-blue-500 {
+    background-color: #3b82f6 !important; /* Tailwind's blue-500 */
+/*}
+*/
+
 .check::after {
     content: "✓";
 }

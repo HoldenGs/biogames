@@ -393,7 +393,7 @@ function GamePage({ mode }: GamePageProps) {
                         For each core, indicate its HER2 level using one of the four buttons. There is a minimum wait time of 5 seconds before you can make a selection. When you have identified the last patch, you will have the opportunity to review your mistakes and the correct HER2 level for those patches. You will also see a leaderboard to compare your performance to that of other players.
                     </p>
                 )}
-                <a href="https://research.seas.ucla.edu/ozcan/" target="_blank" rel="noopener noreferrer" className="mt-auto">
+                <a href="https://research.seas.ucla.edu/ozcan/" target="_blank" rel="noopener noreferrer" className="">
                     <button className="bg-gray-500 hover:bg-gray-600 text-white rounded p-2 w-full whitespace-nowrap transition-colors duration-150">
                         <i className="fa fa-link mr-1"></i>
                         Ozcan Lab
