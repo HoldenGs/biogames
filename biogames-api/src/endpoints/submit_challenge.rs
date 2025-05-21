@@ -6,7 +6,7 @@ use diesel::{prelude::*,
     RunQueryDsl,
     sql_types::Integer
 };
-use tracing::warn;
+use tracing::{warn, info};
 
 use crate::{
     establish_db_connection,
@@ -19,6 +19,7 @@ pub async fn submit_challenge(
     Path(challenge_id): Path<i32>,
     ValidatedRequest(body): ValidatedRequest<SubmitChallengeRequest>) -> impl IntoResponse {
     let connection = &mut establish_db_connection();
+    let server_received_time = chrono::offset::Utc::now(); // Record time of request reception
 
     // get the challenge and its game and core
     let result = challenges::table
@@ -33,16 +34,22 @@ pub async fn submit_challenge(
         Ok(r) => r
     };
 
+    info!(challenge_id = ch.id, server_received_time = %server_received_time.to_rfc3339(), challenge_started_at = ?ch.started_at, "Submit challenge request received.");
+
     let started_at = match ch.started_at {
         // challenge hasn't been started
-        None => return StatusCode::BAD_REQUEST.into_response(),
+        None => {
+            warn!(challenge_id = ch.id, "Challenge has not been started.");
+            return StatusCode::BAD_REQUEST.into_response();
+        }
         Some(s) => s
     };
 
-    let now = chrono::offset::Utc::now();
+    let now = chrono::offset::Utc::now(); // This 'now' is used for the 5-second check and as submission time
 
     if (now - started_at).num_seconds() < 5 {
         // user has to wait a minimum of 5 seconds before submitting
+        warn!(challenge_id = ch.id, server_time_at_check = %now.to_rfc3339(), challenge_started_at = %started_at.to_rfc3339(), diff_seconds = (now - started_at).num_seconds(), "Submission too early.");
         return StatusCode::BAD_REQUEST.into_response();
     }
 

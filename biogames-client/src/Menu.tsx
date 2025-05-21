@@ -21,10 +21,11 @@ interface PreviewCoreIdResponse {
 function Menu({ mode }: MenuProps) {
     const [showInstructions, setShowInstructions] = useState(false);
     const [screenTooSmall, setScreenTooSmall] = useState(false);
-    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-    const [isInitialImageLoadingForPlay, setIsInitialImageLoadingForPlay] = useState(false);
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+
+    const [isInitialImagePreloading, setIsInitialImagePreloading] = useState(false);
+    const [isInitialImagePreloaded, setIsInitialImagePreloaded] = useState(false);
 
     const { 
         data: previewCoreData,
@@ -64,45 +65,67 @@ function Menu({ mode }: MenuProps) {
     }, [queryClient]);
 
     useEffect(() => {
+        let link: HTMLLinkElement | null = document.querySelector("link[rel='preload'][as='image'][data-preview-image]");
+
+        const handleLoad = () => {
+            console.log("[Menu] Initial challenge image preloaded successfully.");
+            setIsInitialImagePreloading(false);
+            setIsInitialImagePreloaded(true);
+        };
+
+        const handleError = (event: Event | string) => {
+            console.error("[Menu] Initial challenge image preloading failed:", event);
+            setIsInitialImagePreloading(false);
+            setIsInitialImagePreloaded(false);
+        };
+
         if (previewCoreData?.her2_core_id) {
             const imageUrl = `${API_BASE_URL}/api/her2_core_images/${previewCoreData.her2_core_id}`;
+            // setPreviewImageUrl(imageUrl); // Not needed for display, paper.png is used.
 
-            let link = document.querySelector("link[rel='preload'][as='image'][data-preview-image]") as HTMLLinkElement;
+            setIsInitialImagePreloading(true);
+            setIsInitialImagePreloaded(false); // Reset on new image
+
             if (!link) {
                 link = document.createElement('link');
                 link.rel = 'preload';
                 link.as = 'image';
                 link.setAttribute('data-preview-image', 'true');
                 document.head.appendChild(link);
+            } else {
+                // If link exists, remove old listeners before reassigning href and adding new ones
+                link.removeEventListener('load', handleLoad);
+                link.removeEventListener('error', handleError);
             }
-            link.href = imageUrl;
+            
+            link.href = imageUrl; // This triggers the browser to start loading
+            link.addEventListener('load', handleLoad);
+            link.addEventListener('error', handleError);
 
-            setIsInitialImageLoadingForPlay(true);
-            const img = new Image();
-            img.onload = () => {
-                console.log("[Menu] Prefetched image loaded successfully via Image():", imageUrl);
-                setIsInitialImageLoadingForPlay(false);
-            };
-            img.onerror = () => {
-                console.error("[Menu] Prefetched image failed to load via Image():", imageUrl);
-                setIsInitialImageLoadingForPlay(false);
-            };
-            img.src = imageUrl;
-
-            return () => {
-                if (link && link.parentNode) {
-                    link.parentNode.removeChild(link);
-                }
-                setIsInitialImageLoadingForPlay(false);
-            };
         } else {
-            const link = document.querySelector("link[rel='preload'][as='image'][data-preview-image]") as HTMLLinkElement;
+            // If no core data, or data cleared
             if (link && link.parentNode) {
+                link.removeEventListener('load', handleLoad);
+                link.removeEventListener('error', handleError);
                 link.parentNode.removeChild(link);
             }
-            setIsInitialImageLoadingForPlay(false);
+            setIsInitialImagePreloading(false);
+            setIsInitialImagePreloaded(false);
+            // setPreviewImageUrl(null); // Not needed
         }
-    }, [previewCoreData]);
+
+        return () => {
+            // Cleanup listeners when component unmounts or previewCoreData changes causing re-run
+            if (link) {
+                link.removeEventListener('load', handleLoad);
+                link.removeEventListener('error', handleError);
+                // Optional: remove link from DOM on unmount if not desired to persist preload
+                // if (link.parentNode) link.parentNode.removeChild(link);
+            }
+             // Reset states if component unmounts mid-load, or if data clears.
+            // The main effect body handles reset if previewCoreData becomes null.
+        };
+    }, [previewCoreData]); // Dependency array includes previewCoreData
 
     return (
         <>
@@ -171,19 +194,23 @@ function Menu({ mode }: MenuProps) {
                                 : "Enter your User ID below and click \"Play\" to start the game."}
                         </p>
 
-                        {isInitialImageLoadingForPlay && (
-                            <div className="text-sm text-gray-600 my-2 p-2 bg-blue-50 border border-blue-200 rounded">
-                                Preparing first challenge image... Please wait.
-                            </div>
-                        )}
-
                         <div>
                             <p>If you don't have a User ID, go to the introduction page and input your mednet email address.</p>
                         </div>
 
                         {mode === "pretest" 
-                            ? <PreTestPlayForm mode={mode} disabled={screenTooSmall || isInitialImageLoadingForPlay} initialHer2CoreId={previewCoreData?.her2_core_id} /> 
-                            : <PlayForm mode={mode} disabled={screenTooSmall || isInitialImageLoadingForPlay} initialHer2CoreId={previewCoreData?.her2_core_id} />}
+                            ? <PreTestPlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} isInitialChallengeImageReady={isInitialImagePreloaded} /> 
+                            : <PlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} isInitialChallengeImageReady={isInitialImagePreloaded} />}
+                        
+                        {/* Display preloading status */}
+                        <div className="mt-2 text-sm">
+                            {isInitialImagePreloading && (
+                                <p className="text-gray-600">Preparing first challenge image...</p>
+                            )}
+                            {!isInitialImagePreloading && !isInitialImagePreloaded && previewCoreData?.her2_core_id && (
+                                <p className="text-red-500">Could not prepare first challenge image. Game may start with a delay for the first image, or it might not load.</p>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex flex-col gap-2">

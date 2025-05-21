@@ -13,9 +13,10 @@ interface PlayFormProps {
     mode: string;
     disabled?: boolean;
     initialHer2CoreId?: number;
+    isInitialChallengeImageReady?: boolean;
 }
 
-function PlayForm({ mode, disabled = false, initialHer2CoreId }: PlayFormProps) {
+function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChallengeImageReady }: PlayFormProps) {
     const navigate = useNavigate();
     const storedUserId = getUsername(); // may exist but we won't auto-fill
     
@@ -219,14 +220,14 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId }: PlayFormProps) 
                             className={`border ${errors.user_id && 'border-danger-500'} px-2 w-full`}
                         />
                         <button
-                            className={`px-4 py-2 text-white w-[100px] ${disabled || localGameMode === 'finished' || localGameMode === 'posttest'
+                            className={`px-4 py-2 text-white w-[100px] ${disabled || localGameMode === 'finished' || localGameMode === 'posttest' || !isInitialChallengeImageReady
                                 ? 'bg-gray-400 cursor-not-allowed'
                                 : 'bg-primary-500 hover:bg-primary-600'
                             }`}
                             type="submit"
-                            disabled={disabled || localGameMode === 'finished' || localGameMode === 'posttest'}
+                            disabled={disabled || localGameMode === 'finished' || localGameMode === 'posttest' || !isInitialChallengeImageReady}
                         >
-                            Play
+                            {isInitialChallengeImageReady ? 'Play' : 'Loading...'}
                         </button>
                         
                     </div>

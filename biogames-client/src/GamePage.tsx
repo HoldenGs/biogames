@@ -222,6 +222,8 @@ function GamePage({ mode }: GamePageProps) {
     const scoreMutation = useMutation<void, Error, number>({
         mutationFn: async (guess: number) => {
             if (!challengeQuery.data?.id) { console.error("scoreMutation: No current challenge ID."); throw new Error("No active challenge.");}
+            const clientSubmitTime = new Date().toISOString();
+            console.log(`[GamePage] scoreMutation: Submitting guess for challenge ${challengeQuery.data.id} at client time: ${clientSubmitTime}`);
             await fetch(`${API_BASE_URL}/challenges/${challengeQuery.data.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ "guess": guess }) });
         },
         networkMode: "always",
@@ -306,12 +308,42 @@ function GamePage({ mode }: GamePageProps) {
     // Log the critical values before the decision
     console.log(`[GamePage] Values for image URL decision: initialHer2CoreIdFromState = ${initialHer2CoreIdFromState}, currentChallengeId = ${currentChallengeId}, currentChallengeCoreId = ${currentChallengeCoreId}`);
 
-    if (initialHer2CoreIdFromState && currentChallengeCoreId && currentChallengeCoreId === initialHer2CoreIdFromState) {
-        imageUrlToDisplay = `${API_BASE_URL}/api/her2_core_images/${initialHer2CoreIdFromState}`;
-        console.log(`[GamePage] Using PREVIEWED image URL for initial challenge (Core ID: ${initialHer2CoreIdFromState}): ${imageUrlToDisplay}`);
-    } else if (currentChallengeId) {
+    if (currentChallengeId) {
+        // Default to standard URL that sets started_at
         imageUrlToDisplay = `${API_BASE_URL}/challenges/${currentChallengeId}/core?mode=${getGameMode()}`;
-        console.log(`[GamePage] Using STANDARD image URL for challenge (Challenge ID: ${currentChallengeId}, Core ID: ${currentChallengeCoreId}): ${imageUrlToDisplay}`);
+        console.log(`[GamePage] Defaulting imageUrlToDisplay to STANDARD: ${imageUrlToDisplay} (Challenge ID: ${currentChallengeId})`);
+
+        // If it's the very first challenge and we have a matching initialHer2CoreIdFromState,
+        // we can use the potentially cached preview URL for display,
+        // but we MUST also ping the standard URL to set started_at.
+        if (initialHer2CoreIdFromState &&
+            currentChallengeCoreId &&
+            currentChallengeCoreId === initialHer2CoreIdFromState &&
+            currentChallengeObject.completed_challenges === 0 // Make sure it's the first challenge
+        ) {
+            imageUrlToDisplay = `${API_BASE_URL}/api/her2_core_images/${initialHer2CoreIdFromState}`;
+            console.log(`[GamePage] Using PREVIEWED image URL for display (Core ID: ${initialHer2CoreIdFromState}): ${imageUrlToDisplay}`);
+
+            const standardChallengeUrl = `${API_BASE_URL}/challenges/${currentChallengeId}/core?mode=${getGameMode()}`;
+            // Only ping if the display URL is different from the standard one, to avoid double fetches if they're the same.
+            // However, in this specific if-branch, they WILL be different.
+            // This ping ensures 'started_at' is set by hitting the correct endpoint.
+            console.log(`[GamePage] Pinging standard challenge URL to ensure 'started_at' is set: ${standardChallengeUrl}`);
+            fetch(standardChallengeUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        // Log if the ping failed, but don't change imageUrlToDisplay here,
+                        // as the previewed image might already be loading/loaded.
+                        // The main fetch for the image for display will handle its own errors.
+                        console.error(`[GamePage] Ping to ${standardChallengeUrl} to set 'started_at' FAILED: ${response.status}, ${response.statusText}`);
+                    } else {
+                        console.log(`[GamePage] Ping to ${standardChallengeUrl} to set 'started_at' was successful.`);
+                    }
+                })
+                .catch(error => {
+                    console.error(`[GamePage] Ping to ${standardChallengeUrl} to set 'started_at' encountered a network error:`, error);
+                });
+        }
     } else {
         console.log("[GamePage] No current challenge ID or core ID available to determine image URL.");
     }
