@@ -14,6 +14,10 @@ button.bg-red-500 {
     background-color: #ef4444 !important; /* Tailwind's red-500 */
 }
 
+button.bg-blue-500 {
+    background-color: #3b82f6 !important; /* Tailwind's blue-500 */
+}
+
 button.bg-gray-500 {
     background-color: #6b7280 !important; /* Tailwind's gray-500 */
 }

@@ -27,14 +27,18 @@ function GamePage({ mode }: GamePageProps) {
     const { gameId: gameIdFromUrl, challengeId: challengeIdFromUrl } = useParams<{ gameId?: string, challengeId?: string }>();
 
     const initialHer2CoreIdFromState = location.state?.initialHer2CoreId as number | undefined;
+    const currentGameMode = getGameMode(); // Get game mode once per render
 
-    console.log(`[GamePage] TOP RENDER. Mode prop: ${mode}, gameIdFromUrl: ${gameIdFromUrl}, challengeIdFromUrl: ${challengeIdFromUrl}, Auth gameMode: ${getGameMode()}, initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
+    console.log(`[GamePage] TOP RENDER. Mode prop: ${mode}, gameIdFromUrl: ${gameIdFromUrl}, challengeIdFromUrl: ${challengeIdFromUrl}, Auth gameMode: ${currentGameMode}, initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
 
     const [activeGameId, setActiveGameId] = useState<number | null>(null);
     const initialCreationAttemptedRef = useRef(false);
     const authUserId = getUserId();
 
-    const [gameStartTime, _] = useState(new Date());
+    const [_unusedForceRender, forceRender] = useState(0); // Keep for now, or remove if setGameCreationError is sufficient
+    const [gameCreationError, setGameCreationError] = useState<Error | null>(null);
+
+    const [gameStartTime, __] = useState(new Date());
     const [buttonsCanBeEnabled, setButtonsCanBeEnabled] = useState(false);
     const [overallTimeString, setOverallTimeString] = useState("");
     const [showInstructions, setShowInstructions] = useState(false);
@@ -45,7 +49,7 @@ function GamePage({ mode }: GamePageProps) {
         queryKey: ['challenge', activeGameId],
         queryFn: async () => {
             if (!activeGameId) throw new Error("activeGameId is null, cannot fetch challenge.");
-            console.log(`[GamePage] challengeQuery START. Mode prop: ${mode}, Auth gameMode: ${getGameMode()}. Fetching for activeGameId: ${activeGameId}`);
+            console.log(`[GamePage] challengeQuery START. Mode prop: ${mode}, Auth gameMode: ${currentGameMode}. Fetching for activeGameId: ${activeGameId}`);
             const url = `${API_BASE_URL}/games/${activeGameId}/challenge`;
             const response = await fetch(url);
             if (!response.ok) {
@@ -56,7 +60,7 @@ function GamePage({ mode }: GamePageProps) {
                 throw new Error(specificError);
             }
             const data: CurrentChallengeResponse = await response.json(); // Ensure data is typed here
-            console.log(`[GamePage] challengeQuery SUCCESS. Mode: ${mode}, Auth GameMode: ${getGameMode()}. Fetched data:`, JSON.parse(JSON.stringify(data)));
+            console.log(`[GamePage] challengeQuery SUCCESS. Mode: ${mode}, Auth GameMode: ${currentGameMode}. Fetched data:`, JSON.parse(JSON.stringify(data)));
             console.log(`[GamePage] challengeQuery SUCCESS. Challenge ID from API: ${data?.id}, Core ID from API: ${data?.core_id}`);
             if (data.id && (String(data.id) !== challengeIdFromUrl || !challengeIdFromUrl)) {
                 const challengePath = mode === 'training' ? `/game/${activeGameId}/${data.id}` : `/${mode}/game/${activeGameId}/${data.id}`;
@@ -70,9 +74,38 @@ function GamePage({ mode }: GamePageProps) {
         refetchOnWindowFocus: false,
         staleTime: 1000 * 60 * 5,
         onError: (err: Error) => {
-            console.error(`[GamePage] challengeQuery FAILED. Mode: ${mode}, Auth GameMode: ${getGameMode()}. Error:`, err.message);
+            console.error(`[GamePage] challengeQuery FAILED. Mode: ${mode}, Auth GameMode: ${currentGameMode}. Error:`, err.message);
         }
     });
+
+    // Moved useEffect for handling the ping to set 'started_at' here, before any conditional returns.
+    useEffect(() => {
+        const currentChallengeObjectEffect = challengeQuery.data; // Use data from query within effect
+        const currentChallengeIdEffect = currentChallengeObjectEffect?.id;
+        const currentChallengeCoreIdEffect = currentChallengeObjectEffect?.core_id;
+
+        const shouldPing = initialHer2CoreIdFromState &&
+                           currentChallengeIdEffect &&
+                           currentChallengeCoreIdEffect &&
+                           currentChallengeCoreIdEffect === initialHer2CoreIdFromState &&
+                           currentChallengeObjectEffect?.completed_challenges === 0;
+
+        if (shouldPing) {
+            const standardChallengeUrl = `${API_BASE_URL}/challenges/${currentChallengeIdEffect}/core?mode=${currentGameMode}`;
+            console.log(`[GamePage] Ping UseEffect: Pinging standard challenge URL ${standardChallengeUrl} to ensure 'started_at' is set.`);
+            fetch(standardChallengeUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        console.error(`[GamePage] Ping UseEffect: Ping to ${standardChallengeUrl} FAILED: ${response.status}, ${response.statusText}`);
+                    } else {
+                        console.log(`[GamePage] Ping UseEffect: Ping to ${standardChallengeUrl} was successful.`);
+                    }
+                })
+                .catch(error => {
+                    console.error(`[GamePage] Ping UseEffect: Ping to ${standardChallengeUrl} encountered a network error:`, error);
+                });
+        }
+    }, [challengeQuery.data, initialHer2CoreIdFromState, currentGameMode, API_BASE_URL]);
 
     if (!authUserId) {
         console.error("[GamePage] No authUserId found. Navigating to home.");
@@ -103,14 +136,24 @@ function GamePage({ mode }: GamePageProps) {
             catch (e) { try { const rawErrorText = await res.text(); errorResponseJson.message = rawErrorText || "Failed to create game (400)."; } catch { errorResponseJson.message = "Failed to create game (400) and read body.";}}
             const openGameId = errorResponseJson?.existing_game_id;
             if (openGameId && typeof openGameId === 'number') {
-                console.log(`[GamePage] Existing game ${openGameId} found due to 400. Quitting it.`);
+                console.log(`[GamePage] Existing game ${openGameId} found due to 400. Attempting to quit it.`);
                 const quitRes = await fetch(`${API_BASE_URL}/games/${openGameId}/quit`, { method: 'POST' });
                 console.log(`[GamePage] Quit attempt for game ${openGameId} status: ${quitRes.status}`);
-                if (!quitRes.ok) { const quitErrorText = await quitRes.text(); console.error(`[GamePage] Failed to quit existing game ${openGameId}: ${quitRes.status} ${quitErrorText}`); }
-                else { console.log(`[GamePage] Successfully quit existing game ${openGameId}.`); }
-                console.log("[GamePage] Retrying game creation after attempting to quit existing one.");
-                res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: authUserId }) });
-            } else { console.warn("[GamePage] 400 during game creation, no existing_game_id found to quit.", errorResponseJson); }
+                if (!quitRes.ok) {
+                    const quitErrorText = await quitRes.text(); 
+                    const quitFailErrorMsg = `Failed to quit existing game ${openGameId}: ${quitRes.status} ${quitErrorText}. You may have reused an existing User ID`;
+                    console.error(`[GamePage] ${quitFailErrorMsg}`);
+                    throw new Error(quitFailErrorMsg);
+                } else {
+                    console.log(`[GamePage] Successfully quit existing game ${openGameId}.`);
+                    console.log("[GamePage] Retrying game creation after successfully quitting existing one.");
+                    res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
+                }
+            } else { 
+                console.warn("[GamePage] 400 during game creation, no existing_game_id found to quit, or it was not a number.", errorResponseJson);
+                const originalErrorMsg = errorResponseJson.message || `Failed to create game (${res.status}). No existing game ID found to attempt quit.`;
+                throw new Error(originalErrorMsg);
+            }
         }
         if (!res.ok) {
             let errorText = "Unknown error."; try { const ed = await res.json(); errorText = ed.message || ed.error || JSON.stringify(ed); } catch { try { errorText = await res.text(); } catch {errorText = `Server ${res.status}`;}}
@@ -121,17 +164,24 @@ function GamePage({ mode }: GamePageProps) {
 
     const createGameMutation = useMutation<Game, Error, void>(createGameAsync, {
         onSuccess: (newGameData) => {
-            console.log(`[GamePage] createGameMutation SUCCESS. Mode: ${mode}, Auth GameMode: ${getGameMode()}. New game ID: ${newGameData.id}.`);
+            console.log(`[GamePage] createGameMutation SUCCESS. Mode: ${mode}, Auth GameMode: ${currentGameMode}. New game ID: ${newGameData.id}.`);
+            setGameCreationError(null); // Clear our specific error state
             const gamePath = mode === 'training' ? `/game/${newGameData.id}` : `/${mode}/game/${newGameData.id}`;
             console.log(`[GamePage] Navigating to: ${gamePath}. Will pass initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
             setActiveGameId(newGameData.id);
             navigate(gamePath, { replace: true, state: { initialHer2CoreId: initialHer2CoreIdFromState } });
         },
         onError: (error) => {
-            console.error(`[GamePage] createGameMutation FAILED. Mode: ${mode}, Auth GameMode: ${getGameMode()}. Error:`, error.message);
-            initialCreationAttemptedRef.current = false;
+            console.error(`[GamePage] createGameMutation FAILED. Mode: ${mode}, Auth GameMode: ${currentGameMode}. Error:`, error.message);
+            setGameCreationError(error); // Use React state to signal the error
+            // forceRender(r => r + 1); // This might no longer be needed if setGameCreationError reliably re-renders
         }
     });
+
+    // Diagnostic useEffect to monitor mutation state changes directly
+    useEffect(() => {
+        console.log("[GamePage] Diagnostic: createGameMutation state changed. isLoading:", createGameMutation.isLoading, "isError:", createGameMutation.isError, "error:", createGameMutation.error?.message);
+    }, [createGameMutation.isLoading, createGameMutation.isError, createGameMutation.error]);
 
     useEffect(() => {
         const parsedGameIdFromUrl = gameIdFromUrl ? parseInt(gameIdFromUrl) : null;
@@ -144,19 +194,19 @@ function GamePage({ mode }: GamePageProps) {
             }
             initialCreationAttemptedRef.current = true;
         } else {
-            if (authUserId && !initialCreationAttemptedRef.current && !createGameMutation.isLoading) {
+            if (authUserId && !initialCreationAttemptedRef.current) { 
                  console.log("[GamePage] No gameId in URL & creation not yet attempted. Triggering game creation.");
                  initialCreationAttemptedRef.current = true;
                  createGameMutation.mutate();
             } else if (!authUserId) {
                 console.log("[GamePage] No gameId in URL, but no authUserId. Cannot create game.");
             } else if (initialCreationAttemptedRef.current && !createGameMutation.isLoading) {
-                 console.log("[GamePage] No gameId in URL, creation was already attempted or in progress. Mutation not loading (could be success/error/idle after reset/nav).");
+                 console.log("[GamePage] No gameId in URL, creation was already attempted or in progress. Mutation not loading (could be success/error/idle after reset/nav). Relevant for subsequent renders after initial attempt.");
             } else if (createGameMutation.isLoading) {
-                 console.log("[GamePage] No gameId in URL, but game creation mutation is already loading.");
+                 console.log("[GamePage] No gameId in URL, but game creation mutation is already loading. Relevant for subsequent renders after initial attempt.");
             }
         }
-    }, [gameIdFromUrl, authUserId, createGameMutation.isLoading, mode]);
+    }, [gameIdFromUrl, authUserId, mode]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -168,7 +218,7 @@ function GamePage({ mode }: GamePageProps) {
             if (hours > 0) builder.push(`${hours}h `);
             if (minutes > 0) builder.push(`${minutes}m `);
             builder.push(`${seconds}s`);
-            setOverallTimeString(builder.join(""));
+            // setOverallTimeString(builder.join("")); // <<<< TEMPORARILY COMMENT THIS OUT FOR TESTING
         }, 100);
         return () => clearInterval(interval);
     }, [gameStartTime]);
@@ -249,22 +299,93 @@ function GamePage({ mode }: GamePageProps) {
         onError: (error, gameIdQuit) => { console.error(`Failed to quit game ${gameIdQuit}:`, error); }
     });
 
-    if (!activeGameId && initialCreationAttemptedRef.current && createGameMutation.isLoading) {
-        return <div className="p-4 text-center">Starting new game...</div>;
+    // Handle initial game creation lifecycle if no activeGameId yet
+    if (!activeGameId) {
+        if (initialCreationAttemptedRef.current) {
+            // An attempt to create a game was made
+            console.log("[GamePage] Render check for !activeGameId & initialCreationAttemptedRef: isLoading=", createGameMutation.isLoading, "isError=", createGameMutation.isError, "gameCreationError=", gameCreationError?.message);
+            
+            // PRIORITIZE OUR LOCAL REACT STATE FOR ERROR DISPLAY
+            if (gameCreationError) { // Check our local React error state first
+                const fullErrorMessage = gameCreationError.message;
+                let mainMessage = fullErrorMessage;
+                let detailMessage = "";
+
+                const splitMarker = "You may have reused an existing User ID";
+                const suggestionMarker = "You may have completed the pre-test."; // Added for another common case
+
+                if (fullErrorMessage.includes(splitMarker)) {
+                    const parts = fullErrorMessage.split(splitMarker);
+                    detailMessage = parts[0].trim(); // Technical details before the marker
+                    mainMessage = splitMarker; // The marker itself as the main message
+                    if (parts.length > 1 && parts[1].trim() !== "") {
+                        // If there's text after the marker, append it to details or handle as needed
+                        detailMessage += ` ${parts[1].trim()}`;
+                    }
+                } else if (fullErrorMessage.includes(suggestionMarker)) {
+                    const parts = fullErrorMessage.split(suggestionMarker);
+                    detailMessage = parts[0].trim();
+                    mainMessage = suggestionMarker;
+                    if (parts.length > 1 && parts[1].trim() !== "") {
+                        detailMessage += ` ${parts[1].trim()}`;
+                    }
+                }
+
+                return (
+                    <div className="p-4 text-center">
+                        <h1 className="text-2xl font-bold text-red-600 mb-2">Error Starting Game</h1>
+                        <p className="text-lg text-red-700 mb-1">{mainMessage}</p>
+                        {detailMessage && (
+                            <p className="text-sm text-gray-600 mb-4">(Details: {detailMessage})</p>
+                        )}
+                        <button 
+                            className="mt-2 bg-blue-500 text-white px-4 py-2 rounded opacity-100"
+                            onClick={() => {
+                                initialCreationAttemptedRef.current = false;
+                                setGameCreationError(null); // Clear our local error state
+                                // createGameMutation.reset(); // Consider if React Query's reset is needed
+                                navigate('/menu');
+                            }}
+                        >
+                            Back to Menu & Retry
+                        </button>
+                    </div>
+                );
+            }
+            // If no local error state, then check React Query's isLoading state
+            if (createGameMutation.isLoading) { 
+                return <div className="p-4 text-center">Starting new game...</div>;
+            }
+            
+            // If an attempt was made, not erroring (local), not loading (RQ), but no activeGameId yet.
+            // This implies the mutation might still be in RQ's isError state if gameCreationError was somehow cleared prematurely,
+            // or it's a true anomaly if both RQ isError is false and gameCreationError is null.
+            if (createGameMutation.isError) {
+                 console.warn("[GamePage] Anomaly/Fallback: RQ isError is true, but local gameCreationError was not set. Displaying RQ error.");
+                 return (
+                    <div className="p-4 text-center">
+                        <h1 className="text-2xl font-bold text-red-600 mb-4">Error Starting Game (RQ)</h1>
+                        <p className="text-md text-gray-700 mb-4">Details: {createGameMutation.error?.message}</p>
+                        <button className="mt-2 bg-blue-500 text-white px-4 py-2 rounded" onClick={() => { initialCreationAttemptedRef.current = false; navigate('/menu'); }}>Back to Menu & Retry</button>
+                    </div>
+                );
+            }
+
+            console.warn("[GamePage] Anomaly: Game creation attempt made, not in local error, not RQ loading, not RQ error, but no activeGameId. Review mutation onSuccess/onError logic.");
+            return <div className="p-4 text-center">Processing game setup... Please wait a moment.</div>;
+        } else {
+            // No attempt made yet by the useEffect, show initializing. useEffect will trigger the mutation.
+            return <div className="p-4 text-center">Initializing Game Page...</div>;
+        }
     }
-    if (!activeGameId && initialCreationAttemptedRef.current && createGameMutation.isError) {
-        return (
-            <div className="p-4 text-center">
-                <h1 className="text-2xl font-bold text-red-600 mb-4">Error Starting Game</h1>
-                <p className="text-md text-gray-700 mb-4">Details: {createGameMutation.error?.message}</p>
-                <button className="mt-2 bg-blue-500 text-white px-4 py-2 rounded" onClick={() => {initialCreationAttemptedRef.current = false; navigate('/menu');}}>Back to Menu & Retry</button>
-            </div>
-        );
-    }
-    if (activeGameId && challengeQuery.isLoading) {
+
+    // At this point, activeGameId is guaranteed to be truthy.
+    // Handle challenge loading states for the active game.
+    if (challengeQuery.isLoading) {
         return <div className="p-4 text-center">Loading challenge data for game {activeGameId}...</div>;
     }
-    if (activeGameId && challengeQuery.isError) {
+
+    if (challengeQuery.isError) {
         return (
             <div className="p-4 text-center">
                 <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Challenge</h1>
@@ -273,30 +394,31 @@ function GamePage({ mode }: GamePageProps) {
             </div>
         );
     }
-    if (activeGameId && !challengeQuery.data && !challengeQuery.isLoading && !challengeQuery.isError) {
-        return <div className="p-4 text-center">Waiting for first challenge for game {activeGameId}...</div>;
-    }
-    if (!activeGameId && !initialCreationAttemptedRef.current) {
-        console.warn("[GamePage] Invalid state: No activeGameId and creation not attempted. This might indicate an issue with auth or initial URL parsing.");
-        return <div className="p-4 text-center">Initializing...</div>;
+
+    // If challenge query is not loading, not error, but no data yet (e.g., 404 or empty response treated as non-error)
+    if (!challengeQuery.data) {
+        return <div className="p-4 text-center">Waiting for challenge data for game {activeGameId}... This may take a moment.</div>;
     }
 
-    if (challengeQuery.data && challengeQuery.data.completed_challenges === challengeQuery.data.total_challenges) {
+    // Challenge data IS available. Check for game completion.
+    if (challengeQuery.data.completed_challenges === challengeQuery.data.total_challenges) {
         const finalAuthGameMode = getGameMode();
         console.log(`[GamePage] Game COMPLETED. Mode prop: ${mode}, Auth gameMode: ${finalAuthGameMode}. Navigating...`);
         if (finalAuthGameMode === 'pretest' || finalAuthGameMode === 'posttest') {
             if (finalAuthGameMode === 'pretest') { AuthSetGameMode('training'); }
             return (<Navigate to={`/menu`}/>);
-        } else {
-            return (<Navigate to={`/games/${activeGameId}/results`}/>);
         }
-    }
-    
-    if (!challengeQuery.data?.id) {
-        return <div className="p-4 text-center">Loading current challenge details...</div>;
+        return (<Navigate to={`/games/${activeGameId}/results`}/>);
     }
 
-    // console.log an entire object for better inspection
+    // Game is not completed, challenge data is available. Check for critical challenge ID for image display.
+    if (!challengeQuery.data.id) {
+        // This implies data is present but missing the essential 'id' field for the challenge.
+        console.error("[GamePage] Anomaly: Challenge data is present but missing 'id'.", challengeQuery.data);
+        return <div className="p-4 text-center">Error: Current challenge details are incomplete.</div>;
+    }
+
+    // All checks passed, proceed to render the main game UI.
     console.log("[GamePage] challengeQuery.data for URL decision:", JSON.parse(JSON.stringify(challengeQuery.data)));
 
     // Conditionally construct imageUrlToDisplay
@@ -306,16 +428,16 @@ function GamePage({ mode }: GamePageProps) {
     const currentChallengeCoreId = currentChallengeObject?.core_id;
 
     // Log the critical values before the decision
-    console.log(`[GamePage] Values for image URL decision: initialHer2CoreIdFromState = ${initialHer2CoreIdFromState}, currentChallengeId = ${currentChallengeId}, currentChallengeCoreId = ${currentChallengeCoreId}`);
+    console.log(`[GamePage] Values for image URL decision: initialHer2CoreIdFromState = ${initialHer2CoreIdFromState}, currentChallengeId = ${currentChallengeId}, currentChallengeCoreId = ${currentChallengeCoreId}, completed_challenges = ${currentChallengeObject?.completed_challenges}`);
 
     if (currentChallengeId) {
         // Default to standard URL that sets started_at
-        imageUrlToDisplay = `${API_BASE_URL}/challenges/${currentChallengeId}/core?mode=${getGameMode()}`;
+        imageUrlToDisplay = `${API_BASE_URL}/challenges/${currentChallengeId}/core?mode=${currentGameMode}`;
         console.log(`[GamePage] Defaulting imageUrlToDisplay to STANDARD: ${imageUrlToDisplay} (Challenge ID: ${currentChallengeId})`);
 
         // If it's the very first challenge and we have a matching initialHer2CoreIdFromState,
-        // we can use the potentially cached preview URL for display,
-        // but we MUST also ping the standard URL to set started_at.
+        // we can use the potentially cached preview URL for display.
+        // The ping to set 'started_at' is now handled by the useEffect below.
         if (initialHer2CoreIdFromState &&
             currentChallengeCoreId &&
             currentChallengeCoreId === initialHer2CoreIdFromState &&
@@ -323,26 +445,6 @@ function GamePage({ mode }: GamePageProps) {
         ) {
             imageUrlToDisplay = `${API_BASE_URL}/api/her2_core_images/${initialHer2CoreIdFromState}`;
             console.log(`[GamePage] Using PREVIEWED image URL for display (Core ID: ${initialHer2CoreIdFromState}): ${imageUrlToDisplay}`);
-
-            const standardChallengeUrl = `${API_BASE_URL}/challenges/${currentChallengeId}/core?mode=${getGameMode()}`;
-            // Only ping if the display URL is different from the standard one, to avoid double fetches if they're the same.
-            // However, in this specific if-branch, they WILL be different.
-            // This ping ensures 'started_at' is set by hitting the correct endpoint.
-            console.log(`[GamePage] Pinging standard challenge URL to ensure 'started_at' is set: ${standardChallengeUrl}`);
-            fetch(standardChallengeUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        // Log if the ping failed, but don't change imageUrlToDisplay here,
-                        // as the previewed image might already be loading/loaded.
-                        // The main fetch for the image for display will handle its own errors.
-                        console.error(`[GamePage] Ping to ${standardChallengeUrl} to set 'started_at' FAILED: ${response.status}, ${response.statusText}`);
-                    } else {
-                        console.log(`[GamePage] Ping to ${standardChallengeUrl} to set 'started_at' was successful.`);
-                    }
-                })
-                .catch(error => {
-                    console.error(`[GamePage] Ping to ${standardChallengeUrl} to set 'started_at' encountered a network error:`, error);
-                });
         }
     } else {
         console.log("[GamePage] No current challenge ID or core ID available to determine image URL.");

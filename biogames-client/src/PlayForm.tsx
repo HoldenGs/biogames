@@ -186,8 +186,8 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
 
     const submit = async (values: PlayFormValues, { setSubmitting }: FormikHelpers<PlayFormValues>) => {
         setSubmitting(true);
-        setUserId(values.user_id); 
-
+            setUserId(values.user_id);
+        
         if (localGameMode === 'pretest') {
             // For pretest, username is typically set during the pretest/registration process itself.
             // Navigating to pretest/menu will handle this.
