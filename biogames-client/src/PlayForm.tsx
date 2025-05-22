@@ -110,7 +110,11 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
         } else {
             try {
                 // First check if this is a valid user_id
-                const validationResponse = await fetch(`${API_BASE_URL}/validate-username/${values.user_id}`, {
+                let url = mode === 'training' 
+                    ? `${API_BASE_URL}/validate-username/${values.user_id}?context=training` 
+                    : `${API_BASE_URL}/validate-username/${values.user_id}`;
+                
+                const validationResponse = await fetch(url, {
                     method: 'GET',
                     headers: {
                         'Cache-Control': 'no-cache',

@@ -218,7 +218,7 @@ function GamePage({ mode }: GamePageProps) {
             if (hours > 0) builder.push(`${hours}h `);
             if (minutes > 0) builder.push(`${minutes}m `);
             builder.push(`${seconds}s`);
-            // setOverallTimeString(builder.join("")); // <<<< TEMPORARILY COMMENT THIS OUT FOR TESTING
+            setOverallTimeString(builder.join("")); // <<<< TEMPORARILY COMMENT THIS OUT FOR TESTING
         }, 100);
         return () => clearInterval(interval);
     }, [gameStartTime]);
