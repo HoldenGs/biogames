@@ -263,6 +263,4 @@ entitled.
         message: "User ID generated successfully. In production, this would be emailed to the provided address.".to_string(),
     }.into_response()
 
-    // TODO: add email text here and actually get it sent out
-
-} 
+}
