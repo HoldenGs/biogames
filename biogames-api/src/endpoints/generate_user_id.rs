@@ -94,124 +94,168 @@ pub async fn generate_user_id(
         }
     }
 
-    // Attempt to send the user ID via the local sendmail binary
-    if let Ok(mut child) = Command::new("sendmail").arg("-t").stdin(Stdio::piped()).spawn() {
+    use std::process::{Command, Stdio};
+use std::io::Write;
+
+pub fn send_user_email(user_id: &str, email: &str) {
+    let email_body = format!(
+        r#"To: {email}
+Subject: Your BioGames User ID
+
+Your user ID is: {user_id}
+
+Hello,
+
+Thank you for registering for the BioGames platform.
+Your assigned user ID is: {user_id}
+
+DO NOT SHARE YOUR USER ID, AND PLEASE SAVE IT, AS IT’S CRITICAL FOR RECEIVING YOUR PRIZE.
+
+If you have any questions, please contact the BioGames team.
+
+Thank you,
+The BioGames Team
+
+------------------------------------------------------------------------------
+
+University of California, Los Angeles
+
+Evaluating the BioGames Platform as a Competitive Learning Tool for Training Diagnostic Accuracy in Breast Tissue Scoring
+
+INFORMATION SHEET FOR PARTICIPANTS
+
+INTRODUCTION
+
+The Ozcan Research Group, from the Department of Electrical Engineering at the University of California, Los
+Angeles (UCLA), is conducting a research study. You are being invited to participate because you are currently
+enrolled in an ACGME-I-accredited pathology residency program. Your participation in this research study is entirely
+voluntary.
+
+WHAT SHOULD I KNOW ABOUT A RESEARCH STUDY?
+
+• Whether or not you take part in the study is up to you.
+• You can choose not to take part.
+• You can agree to take part and later change your mind.
+• Your decision will not be held against you.
+• You can ask all the questions you want before you decide.
+
+WHY IS THIS RESEARCH BEING DONE?
+
+This study evaluates the effectiveness of the BioGames platform in training pathology residents to accurately score
+clinical datasets, specifically Her2-stained breast tissue biopsies. The goal is to determine whether BioGames can
+improve diagnostic accuracy and efficiency through a gamified, interactive training experience.
+
+HOW LONG WILL THE RESEARCH LAST AND WHAT WILL I NEED TO DO?
+
+Participation will take approximately 30 minutes over the course of a month. You will be asked to complete a pre-test,
+post-test, and at least one practice session.
+
+Pre-test and Post-test: Each will take about 5 minutes.
+Practice Sessions: Each session will take 2 - 3 minutes. You are encouraged to play multiple times.
+
+Participation includes the following steps:
+1. Complete a pre-test to assess your baseline diagnostic skills.
+2. Use the BioGames platform over a two-week period for practice and competition.
+3. Complete a post-test to evaluate any improvement.
+
+ARE THERE ANY RISKS IF I PARTICIPATE?
+
+There are no known risks or discomforts associated with participation in this study. However, if you feel any
+discomfort while using the platform, you may stop at any time.
+
+ARE THERE ANY BENEFITS IF I PARTICIPATE?
+
+We cannot promise any benefits to others from your taking part in this research. However, the study may benefit
+others by enhancing their diagnostic skill and accurately score Her2-stained breast tissue biopsies in the future.
+
+WHAT OTHER CHOICES DO I HAVE IF I CHOSE NOT TO PARTICIPATE?
+
+Your participation in this study is entirely voluntary. You may refuse to participate or withdraw from the study at any
+time without penalty or loss of benefits to which you are otherwise entitled. If you choose to withdraw, your data will
+be discarded.
+
+HOW WILL INFORMATION ABOUT ME AND MY PARTICIPATION BE KEPT CONFIDENTIAL?
+
+The researchers will do their best to make sure that your private information is kept confidential. Information about
+you will be handled as confidentially as possible, but participating in research may involve a loss of privacy and the
+potential for a breach in confidentiality. Study data will be physically and electronically secured.  As with any use of
+electronic means to store data, there is a risk of breach of data security.
+
+Use of personal information that can identify you:
+
+You will receive a unique access code from the study coordinator at your program. Your only personal information
+that will be collected is your mednet email.
+
+How information about you will be stored:
+
+All study material will be stored in an encrypted drive that will be accessible only to a small number of authorized
+people involved in this project. The research team will carefully follow the coding, storage, and data sharing plan
+explained below. No identifiable information about you will be kept with the research data. All research data and
+records will be stored on a securely encrypted system.
+
+People and agencies that will have access to your information:
+
+The research team and authorized UCLA personnel may have access to study data and records to monitor the study.
+ Research records provided to authorized, non-UCLA personnel will not contain identifiable information about you.
+Publications and/or presentations that result from this study will not identify you by name.
+
+Employees of the University may have access to identifiable information as part of routine processing of your
+information, such as lab work or processing payment. However, University employees are bound by strict rules of
+confidentiality.
+
+How long information from the study will be kept:
+
+Data collected from participants will be kept for a minimum of 3 years after the completion of the study or the last
+published result, whichever is later, in accordance with federal regulations and institutional policies. This is to ensure
+that the data is available for any audits, reviews, or further analysis. Your data, including de-identified data may be
+kept for use in future research, including research that is not currently known. If you do not want your data to be used
+for future research, you should not participate in this study.
+
+WILL I BE PAID FOR MY PARTICIPATION?
+
+The top 2 participants in the competition will be eligible to receive a gift card valued at under $100 as a reward for
+their efforts.
+In addition, 3 random participants will be selected, independently of their performance, to receive a $50 gift card.
+
+WHO CAN I CONTACT IF I HAVE QUESTIONS ABOUT THIS STUDY?
+
+The research team:
+If you have any questions, comments, or concerns about the research, you can contact postdoctoral scholar Paloma
+Casteleiro Costa (casteleiro@ucla.edu) or medical student Brian Qinyu Cheng (bqcheng@mednet.ucla.edu). If you
+have any questions, comments, or concerns about the study team, you can talk to the study PI Dr. Aydogan Ozcan
+(ozcan@ee.ucla.edu).
+
+UCLA Office of the Human Research Protection Program (OHRPP):
+
+If you have questions about your rights as a research subject, or you have concerns or suggestions and you want to
+talk to someone other than the researchers, you may contact the UCLA OHRPP by phone: (310) 206-2040; by
+email: participants@research.ucla.edu or by mail: Box 951406, Los Angeles, CA 90095-1406.
+
+WHAT ARE MY RIGHTS IF I TAKE PART IN THIS STUDY?
+
+• You can choose whether or not you want to be in this study, and you may withdraw your consent and discontinue
+participation at any time.
+• Whatever decision you make, there will be no penalty to you, and no loss of benefits to which you were otherwise
+entitled.
+• You may refuse to answer any questions that you do not want to answer and still remain in the study.
+"#,
+        email = email,
+        user_id = user_id,
+    );
+
+    if let Ok(mut child) = Command::new("sendmail")
+        .arg("-t")
+        .stdin(Stdio::piped())
+        .spawn()
+    {
         if let Some(mut stdin) = child.stdin.take() {
-            let _ = writeln!(stdin, "To: {}", payload.email);
-            let _ = writeln!(stdin, "Subject: Your BioGames User ID\n");
-            let _ = writeln!(stdin, "Your user ID is: {}", user_id);
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Hello,");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Thank you for registering for the BioGames platform.");
-            let _ = writeln!(stdin, "Your assigned user ID is: {}", user_id);
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "DO NOT SHARE THIS INFO AND PLEASE SAVE THIS INFORMATION, AS IT’S CRITICAL FOR RECEIVING YOUR PRIZE.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "If you have any questions, please contact the BioGames team.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Thank you,");
-            let _ = writeln!(stdin, "The BioGames Team");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "University of California, Los Angeles");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Study Information Sheet");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Evaluating the BioGames Platform as a Competitive Learning Tool for Training Diagnostic Accuracy in Breast Tissue Scoring");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "INTRODUCTION");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Principle Investigator, Brian Qinyu Cheng, and Faculty Sponsor, Dr. Aydogan Ozcan, from the Department of Electrical Engineering at the University of California, Los Angeles are conducting a research study. You were selected as a possible participant in this study because you are a current medical resident in an ACGME-I-accredited residency programs in pathology. Your participation in this research study is voluntary.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "WHAT SHOULD I KNOW ABOUT A RESEARCH STUDY?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "• Someone will explain this research study to you.");
-            let _ = writeln!(stdin, "• Whether or not you take part is up to you.");
-            let _ = writeln!(stdin, "• You can choose not to take part.");
-            let _ = writeln!(stdin, "• You can agree to take part and later change your mind.");
-            let _ = writeln!(stdin, "• Your decision will not be held against you.");
-            let _ = writeln!(stdin, "• You can ask all the questions you want before you decide.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "WHY IS THIS RESEARCH BEING DONE?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "You are being invited to participate in a research study that evaluates the effectiveness of the BioGames platform in training pathology residents to accurately score clinical datasets, specifically Her2-stained breast tissue biopsies. The study aims to assess whether the BioGames platform can improve diagnostic accuracy and speed by using an interactive, competitive gaming environment.<");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "HOW LONG WILL THE RESEARCH LAST AND WHAT WILL I NEED TO DO?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "We estimate participation will take on an average of 30 minutes in total within the timeframe a month. Participant is expected to complete Pre-test, Post-test and at least one practice session. Pre-test and Post-test will each take around 5 minutes. Each practice session on the platform is expected to last 2 – 5 minutes and participants are encouraged to engage with the game multiple times to improve their scores.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "If you volunteer to participate in this study, the researcher will ask you to do the following:");
-            let _ = writeln!(stdin, "1. Complete an initial pre-test to evaluate your current ability to score Her2-stained breast tissue biopsies.");
-            let _ = writeln!(stdin, "2. Use the BioGames platform for two weeks during which you will have unlimited access to the platform to practice and compete with other participants in scoring biopsies.");
-            let _ = writeln!(stdin, "3. At the end of the study period, you will complete a post-test to assess any improvements in your diagnostic skills.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "HOW MANY PEOPLE ARE EXPECTED TO PARTICIPATE");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "The study aims to recruit a maximum of 20 participants at UCLA in the trial phase, and 2500 participants nationally across medical residency programs in the national phase.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "ARE THERE ANY RISKS IF I PARTICIPATE?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "There are no known risks or discomforts associated with participation in this study. However, if you feel any discomfort while using the platform, you may stop at any time.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "ARE THERE ANY BENEFITS IF I PARTICIPATE?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "We cannot promise any benefits to others from your taking part in this research. However, the study may benefit others by enhancing their diagnostic skill and accurately score Her2-stained breast tissue biopsies in the future.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "What other choices do I have if I choose not to participate?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Your participation in this study is entirely voluntary. You may refuse to participate or withdraw from the study at any time without penalty or loss of benefits to which you are otherwise entitled. If you choose to withdraw, your data will be discarded.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "HOW WILL INFORMATION ABOUT ME AND MY PARTICIPATION BE KEPT CONFIDENTIAL?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "The researchers will do their best to make sure that your private information is kept confidential. Information about you will be handled as confidentially as possible, but participating in research may involve a loss of privacy and the potential for a breach in confidentiality. Study data will be physically and electronically secured.  As with any use of electronic means to store data, there is a risk of breach of data security.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Use of personal information that can identify you:");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "You will receive an unique access code from the study coordinator at your program. No personal identifying information will be collected.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "How information about you will be stored:");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "All study material will be stored in an encrypted drive that will be accessible only to a very small number of authorized people involved in this project. The research team will carefully follow the coding, storage, and data sharing plan explained below. No identifiable information about you will be kept with the research data. All research data and records will be stored on a laptop computer that is securely encrypted.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "People and agencies that will have access to your information:");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "The research team and authorized UCLA personnel may have access to study data and records to monitor the study.  Research records provided to authorized, non-UCLA personnel will not contain identifiable information about you. Publications and/or presentations that result from this study will not identify you by name.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Employees of the University may have access to identifiable information as part of routine processing of your information, such as lab work or processing payment. However, University employees are bound by strict rules of confidentiality.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "How long information from the study will be kept:");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Data collected from participants will be kept for a minimum of 3 years after the completion of the study or the last published result, whichever is later, in accordance with federal regulations and institutional policies. This is to ensure that the data is available for any audits, reviews, or further analysis. Your data, including de-identified data may be kept for use in future research, including research that is not currently known. If you do not want your data to be used for future research, you should not participate in this study.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "USE OF DATA FOR FUTURE RESEARCH");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Your data, including de-identified data may be kept for use in future research.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "WILL I BE PAID FOR MY PARTICIPATION?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "Participants who rank in the top 10 nationally for diagnostic accuracy and time will be eligible to receive a gift card valued at under $100 as a reward for their efforts.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "WHO CAN I CONTACT IF I HAVE QUESTIONS ABOUT THIS STUDY?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "The research team:");
-            let _ = writeln!(stdin, "If you have any questions, comments or concerns about the research, you can talk to the one of the researchers, please contact Brian Qinyu Cheng, bqcheng@mednet.ucla.edu. If you have any questions, comments or concerns about the study team, you can talk to the faculty sponsor, please contact Dr. Aydogan Ozcan, ozcan@ee.ucla.edu. If you would like to reach us by phone, please call Dr. Aydogan Ozcan office phone at (310) 825-0915.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "UCLA Office of the Human Research Protection Program (OHRPP):");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "If you have questions about your rights as a research subject, or you have concerns or suggestions and you want to talk to someone other than the researchers, you may contact the UCLA OHRPP by phone: (310) 206-2040; by email: participants@research.ucla.edu or by mail: Box 951406, Los Angeles, CA 90095-1406.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "WHAT ARE MY RIGHTS IF I TAKE PART IN THIS STUDY?");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "• You can choose whether or not you want to be in this study, and you may withdraw your consent and discontinue participation at any time.");
-            let _ = writeln!(stdin, "• Whatever decision you make, there will be no penalty to you, and no loss of benefits to which you were otherwise entitled.");
-            let _ = writeln!(stdin, "• You may refuse to answer any questions that you do not want to answer and still remain in the study.");
-            let _ = writeln!(stdin, "");
-            let _ = writeln!(stdin, "You will be given a copy of this information to keep for your records.");
+            let _ = stdin.write_all(email_body.as_bytes());
         }
         let _ = child.wait();
     } else {
-        eprintln!("Failed to spawn sendmail for {}", payload.email);
+        eprintln!("Failed to send email to {}", email);
     }
+}
 
     GenerateUserIdResponse {
         success: true,
