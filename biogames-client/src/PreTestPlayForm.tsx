@@ -13,9 +13,10 @@ interface PreTestPlayFormProps {
     mode: string;
     disabled?: boolean;
     initialHer2CoreId?: number;
+    isInitialChallengeImageReady?: boolean;
 }
 
-function PreTestPlayForm({ mode, initialHer2CoreId, disabled }: PreTestPlayFormProps) {
+function PreTestPlayForm({ mode, initialHer2CoreId, isInitialChallengeImageReady, disabled }: PreTestPlayFormProps) {
     const navigate = useNavigate();
     
     const initialValues: PreTestPlayFormValues = { 
@@ -180,9 +181,9 @@ function PreTestPlayForm({ mode, initialHer2CoreId, disabled }: PreTestPlayFormP
                         <button
                             className="bg-primary-500 text-white px-4 py-2 w-full rounded-md"
                             type="submit"
-                            disabled={isSubmitting || disabled}
+                            disabled={isSubmitting || disabled || !isInitialChallengeImageReady}
                         >
-                            {isSubmitting || disabled ? 'Processing...' : 'Start Pre-Test'}
+                            {isSubmitting ? 'Processing...' : (isInitialChallengeImageReady ? 'Start Pre-Test' : 'Preparing Image...')}
                         </button>
                     </div>
                     

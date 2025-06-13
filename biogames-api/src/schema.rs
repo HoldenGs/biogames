@@ -46,9 +46,9 @@ diesel::table! {
     registered_users (id) {
         id -> Int4,
         user_id -> Text,
-        email -> Nullable<Text>,
         #[max_length = 32]
         username -> Nullable<Varchar>,
+        email -> Nullable<Text>,
     }
 }
 

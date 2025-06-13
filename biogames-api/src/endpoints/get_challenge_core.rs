@@ -116,12 +116,26 @@ pub async fn get_challenge_core(
     };
     let file_size = metadata.len();
 
-    diesel::update(challenges::table)
+    // Update started_at if it's null
+    match diesel::update(challenges::table)
         .filter(challenges::id.eq(challenge_id))
         .filter(challenges::started_at.is_null())
         .set(challenges::started_at.eq(chrono::offset::Utc::now()))
         .execute(connection)
-        .unwrap();
+    {
+        Ok(0) => {
+            // This means started_at was already set, which is fine.
+            // Or, challenge_id didn't exist, but we would have caught that earlier.
+            tracing::debug!("Challenge {} started_at was already set or challenge not found for update.", challenge_id);
+        }
+        Ok(_) => {
+            tracing::info!("Successfully set started_at for challenge {}", challenge_id);
+        }
+        Err(e) => {
+            tracing::error!("Failed to set started_at for challenge {}: {:?}", challenge_id, e);
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response(); // Return an error response
+        }
+    }
 
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);

@@ -4,7 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#000000" />
     <title>Vite + React + TS</title>
+    <!-- Force API base URL to use our proxy path -->
+    <script>
+      window.OVERRIDE_API_BASE_URL = '/proxy-api';
+    </script>
   </head>
   <body>
     <div id="root"></div>

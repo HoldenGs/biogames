@@ -13,9 +13,10 @@ interface PlayFormProps {
     mode: string;
     disabled?: boolean;
     initialHer2CoreId?: number;
+    isInitialChallengeImageReady?: boolean;
 }
 
-function PlayForm({ mode, disabled = false, initialHer2CoreId }: PlayFormProps) {
+function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChallengeImageReady }: PlayFormProps) {
     const navigate = useNavigate();
     const storedUserId = getUsername(); // may exist but we won't auto-fill
     
@@ -109,7 +110,11 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId }: PlayFormProps) 
         } else {
             try {
                 // First check if this is a valid user_id
-                const validationResponse = await fetch(`${API_BASE_URL}/validate-username/${values.user_id}`, {
+                let url = mode === 'training' 
+                    ? `${API_BASE_URL}/validate-username/${values.user_id}?context=training` 
+                    : `${API_BASE_URL}/validate-username/${values.user_id}`;
+                
+                const validationResponse = await fetch(url, {
                     method: 'GET',
                     headers: {
                         'Cache-Control': 'no-cache',
@@ -183,16 +188,49 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId }: PlayFormProps) 
         return errors;
     };
 
-    const submit = (values: PlayFormValues, { setSubmitting }: FormikHelpers<PlayFormValues>) => {
+    const submit = async (values: PlayFormValues, { setSubmitting }: FormikHelpers<PlayFormValues>) => {
         setSubmitting(true);
-        // Always save the user_id for both pretest and training runs
             setUserId(values.user_id);
         
         if (localGameMode === 'pretest') {
-            // Redirect to the pretest page for username registration
+            // For pretest, username is typically set during the pretest/registration process itself.
+            // Navigating to pretest/menu will handle this.
             navigate(`/pretest/menu`, { state: { initialHer2CoreId } });
         } else {
-            setGameMode('training');
+            // For other modes (e.g., training), fetch and set the username associated with the user_id.
+            try {
+                const usernameCheckResponse = await fetch(`${API_BASE_URL}/check-username/${values.user_id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache',
+                    },
+                });
+
+                if (usernameCheckResponse.ok) {
+                    const usernameData = await usernameCheckResponse.json();
+                    if (usernameData.username) {
+                        setUsername(usernameData.username); // Set the actual username from the API
+                    } else {
+                        // Fallback or error: No username found for this user_id.
+                        // This might mean the user_id is valid but has no username yet,
+                        // which should ideally be caught by validation or handled in a specific way.
+                        console.warn(`[PlayForm] submit: No username found for user_id: ${values.user_id}. Display name might default to 'Player'.`);
+                        // Optionally, clear any stale username: setUsername(null);
+                    }
+                } else {
+                    const errorText = await usernameCheckResponse.text();
+                    console.error(`[PlayForm] submit: Failed to fetch username for user_id: ${values.user_id}. Status: ${usernameCheckResponse.status}, ${errorText}`);
+                    // Optionally, clear any stale username: setUsername(null);
+                }
+            } catch (error) {
+                console.error('[PlayForm] submit: Error fetching username:', error);
+                // Optionally, clear any stale username: setUsername(null);
+            }
+            
+            // Set the game mode for training, etc.
+            // Make sure localGameMode is appropriate here; it's updated by validate/useEffect
+            setGameMode(localGameMode); 
             navigate(`/game?mode=${localGameMode}`, { state: { initialHer2CoreId } });
         }
         
@@ -219,14 +257,14 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId }: PlayFormProps) 
                             className={`border ${errors.user_id && 'border-danger-500'} px-2 w-full`}
                         />
                         <button
-                            className={`px-4 py-2 text-white w-[100px] ${disabled || localGameMode === 'finished' || localGameMode === 'posttest'
+                            className={`px-4 py-2 text-white w-[100px] ${disabled || localGameMode === 'finished' || localGameMode === 'posttest' || !isInitialChallengeImageReady
                                 ? 'bg-gray-400 cursor-not-allowed'
                                 : 'bg-primary-500 hover:bg-primary-600'
                             }`}
                             type="submit"
-                            disabled={disabled || localGameMode === 'finished' || localGameMode === 'posttest'}
+                            disabled={disabled || localGameMode === 'finished' || localGameMode === 'posttest' || !isInitialChallengeImageReady}
                         >
-                            Play
+                            {isInitialChallengeImageReady ? 'Play' : 'Loading...'}
                         </button>
                         
                     </div>

@@ -15,7 +15,8 @@ pub struct RegisterWithUsernameRequest {
     #[validate(length(min = 1, max = 32, message = "Username must be between 1 and 32 characters"))]
     pub username: String,
     
-    #[validate(length(min = 5, message = "User ID is too short"))]
+    // TEMPORARILY changed min = 5 to min = 1 for testing.
+    #[validate(length(min = 1, message = "User ID must be at least 1 character"))] 
     pub user_id: String,
 }
 
