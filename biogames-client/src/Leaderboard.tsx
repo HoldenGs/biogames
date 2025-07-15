@@ -30,10 +30,23 @@ function Leaderboard(props: LeaderboardProps) {
             <tbody>
                 {leaderboardQuery.data.entries
                 .filter(e => !e.username.endsWith('admin'))
-                .map(e => {
+                .map((e, index) => {
                     const name = e.username.startsWith('UCLA_') ? 'Anonymous' : e.username;
+                    
+                    // Determine row class based on rank
+                    let rowClass = "";
+                    if (index === 0) { // 1st place
+                        rowClass = "bg-yellow-300 hover:bg-yellow-400"; 
+                    } else if (index === 1) { // 2nd place
+                        rowClass = "bg-slate-300 hover:bg-slate-400";
+                    } else if (index === 2) { // 3rd place
+                        rowClass = "bg-orange-300 hover:bg-orange-400"; // Using orange for bronze-like color
+                    } else {
+                        rowClass = "odd:bg-gray-100 hover:bg-gray-200"; // Default, keep odd striping for others
+                    }
+
                     return (
-                    <tr key={e.username + e.timestamp} className="odd:bg-gray-100">
+                    <tr key={e.username + e.timestamp} className={rowClass}>
                         <td>{name}</td>
                         <td>{e.score}</td>
                         <td>{humanize_time(e.time_taken_ms, true)}</td>

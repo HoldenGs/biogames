@@ -32,14 +32,14 @@ pub async fn get_leaderboard(Query(_body): Query<GetLeaderboardRequest>) -> impl
                 SELECT
                     *,
                     ROW_NUMBER() OVER (
-                        PARTITION BY username
+                        PARTITION BY user_id
                         ORDER BY score DESC, time_taken_ms
                     ) AS rank
                 FROM games
                 WHERE score IS NOT NULL AND time_taken_ms IS NOT NULL AND game_type = 'training'
             ) ranked_games
-            WHERE rank <= 2
-            GROUP BY username
+            WHERE rank <= 1
+            GROUP BY user_id
             ORDER BY avg_score DESC, avg_time_taken_ms;
         "#;
 

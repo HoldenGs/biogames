@@ -7,27 +7,27 @@ use crate::{
     schema::games
 };
 
-pub async fn check_game_type(Path(username): Path<String>) -> impl IntoResponse {
+pub async fn check_game_type(Path(user_id): Path<String>) -> impl IntoResponse {
     let connection = &mut establish_db_connection();
 
-    tracing::info!("Checking game type for username: {}", username);
+    tracing::info!("Checking game type for user_id: {}", user_id);
     let game_type = "pretest";
     let game_count_pretest = games::table
-        .filter(games::username.eq(username.clone()))
+        .filter(games::user_id.eq(user_id.clone()))
         .filter(games::game_type.eq(game_type))
         .count()
         .get_result::<i64>(connection);
 
     let game_type = "posttest";
     let game_count_posttest = games::table
-        .filter(games::username.eq(username.clone()))
+        .filter(games::user_id.eq(user_id.clone()))
         .filter(games::game_type.eq(game_type))
         .count()
         .get_result::<i64>(connection);
 
     let game_type = "training";
     let game_count_training = games::table
-        .filter(games::username.eq(username.clone()))
+        .filter(games::user_id.eq(user_id.clone()))
         .filter(games::game_type.eq(game_type))
         .count()
         .get_result::<i64>(connection); // get_result returns Result<i64, diesel::result::Error>
@@ -48,7 +48,7 @@ pub async fn check_game_type(Path(username): Path<String>) -> impl IntoResponse 
         Ok(game_counts) => {
             tracing::info!(
                 "Game count for {}: pretest: {}, posttest: {}, training: {}",
-                username,
+                user_id,
                 game_counts.pretest,
                 game_counts.posttest,
                 game_counts.training

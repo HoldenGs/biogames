@@ -4,9 +4,9 @@ use diesel::{prelude::*,
     update,
     ExpressionMethods,
     RunQueryDsl,
-    sql_types::Integer
+    sql_types::{Integer, Timestamptz}
 };
-use tracing::{warn, info};
+use tracing::{warn, info, error};
 
 use crate::{
     establish_db_connection,
@@ -23,41 +23,41 @@ pub async fn submit_challenge(
 
     // get the challenge and its game and core
     let result = challenges::table
-        .inner_join(games::table)
+        .inner_join(games::table.on(games::id.eq(challenges::game_id)))
         .inner_join(her2_cores::table.on(her2_cores::id.eq(challenges::core_id)))
         .filter(challenges::id.eq(challenge_id))
+        .select((challenges::all_columns, games::all_columns, her2_cores::all_columns))
         .first::<(Challenge, Game, Her2Core)>(connection);
 
     let (ch, g, co) = match result {
-        Err(diesel::result::Error::NotFound) => return StatusCode::NOT_FOUND.into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        Err(diesel::result::Error::NotFound) => return (StatusCode::NOT_FOUND, "Challenge or related game/core not found").into_response(),
+        Err(e) => {
+            error!("Error fetching challenge details: {:?}", e);
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
         Ok(r) => r
     };
 
-    info!(challenge_id = ch.id, server_received_time = %server_received_time.to_rfc3339(), challenge_started_at = ?ch.started_at, "Submit challenge request received.");
+    info!(challenge_id = ch.id, game_id = g.id, server_received_time = %server_received_time.to_rfc3339(), challenge_started_at = ?ch.started_at, "Submit challenge request received.");
 
     let started_at = match ch.started_at {
-        // challenge hasn't been started
         None => {
             warn!(challenge_id = ch.id, "Challenge has not been started.");
-            return StatusCode::BAD_REQUEST.into_response();
+            return (StatusCode::BAD_REQUEST, "Challenge not started").into_response();
         }
         Some(s) => s
     };
 
-    let now = chrono::offset::Utc::now(); // This 'now' is used for the 5-second check and as submission time
+    let now = chrono::offset::Utc::now(); // This 'now' is used for the 5-second check, as submission time for challenge, and potentially finished_at for game.
 
     if (now - started_at).num_seconds() < 5 {
-        // user has to wait a minimum of 5 seconds before submitting
         warn!(challenge_id = ch.id, server_time_at_check = %now.to_rfc3339(), challenge_started_at = %started_at.to_rfc3339(), diff_seconds = (now - started_at).num_seconds(), "Submission too early.");
-        return StatusCode::BAD_REQUEST.into_response();
+        return (StatusCode::BAD_REQUEST, "Submission too early").into_response();
     }
 
-    // calculate score using confusion matrix
     let points = get_score(body.guess, co.score);
 
-    // set score and submission time
-    let result = update(challenges::table)
+    let challenge_update_result = update(challenges::table)
         .filter(challenges::id.eq(challenge_id))
         .filter(challenges::guess.is_null())
         .set((
@@ -67,44 +67,67 @@ pub async fn submit_challenge(
         ))
         .execute(connection);
 
-    match result {
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        // no challenges affected; this one has already been scored
-        Ok(0) => return StatusCode::BAD_REQUEST.into_response(),
+    match challenge_update_result {
+        Err(e) => {
+            error!("Error updating challenge {}: {:?}", challenge_id, e);
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+        Ok(0) => {
+            warn!("Challenge {} already scored or not found for update.", challenge_id);
+            return (StatusCode::BAD_REQUEST, "Challenge already scored or not found").into_response();
+        }
         Ok(1) => {
-            // set the game's final score and time taken to the sum of the
-            // challenge scores/times, IF all challenges have been submitted
-            let query = r#"
-                update games g
-                set score = (
-                    select sum(c.points)
-                    from challenges c
-                    where c.game_id = $1
-                    and $1 in (
-                        select game_id from challenges
-                        group by game_id
-                        having min(coalesce(points, -1)) != -1
-                )), time_taken_ms = (
-                    select floor(extract(epoch from sum(c.submitted_at - c.started_at)) * 1000)
-                    from challenges c
-                    where c.game_id = $1
-                    and $1 in (
-                        select game_id from challenges
-                        group by game_id
-                        having min(coalesce(points, -1)) != -1
-                ))
-                where g.id = $1;
-                "#;
+            info!("Challenge {} successfully scored with {} points.", challenge_id, points);
 
-            if let Err(_) = sql_query(query)
+            // Check if this was the last challenge for the game
+            // To do this accurately, we need the total number of challenges for this game.
+            // This might involve another query or ensuring 'g' (Game model) has total_challenges if it's part of your schema/model.
+            // For now, we proceed with the existing logic that updates game score if all challenges have points.
+
+            let game_update_query = r#"
+                UPDATE games g
+                SET 
+                    score = (
+                        SELECT SUM(c.points)
+                        FROM challenges c
+                        WHERE c.game_id = $1
+                    ),
+                    time_taken_ms = (
+                        SELECT FLOOR(EXTRACT(epoch FROM SUM(c.submitted_at - c.started_at)) * 1000)
+                        FROM challenges c
+                        WHERE c.game_id = $1 AND c.submitted_at IS NOT NULL AND c.started_at IS NOT NULL
+                    ),
+                    finished_at = $2
+                WHERE g.id = $1 AND g.finished_at IS NULL
+                AND $1 IN (
+                    SELECT game_id 
+                    FROM challenges
+                    GROUP BY game_id
+                    HAVING MIN(COALESCE(points, -9999)) != -9999 -- check all challenges have non-null points
+                );
+            "#;
+
+            let game_update_execution_result = sql_query(game_update_query)
                 .bind::<Integer, _>(g.id)
-                .execute(connection) {
-                warn!("error saving score for game {}", g.id);
-            }
+                .bind::<Timestamptz, _>(now) // Use the same 'now' for consistency
+                .execute(connection);
 
-            return StatusCode::OK.into_response()
-        },
-        // should be impossible for two challenges to have the same ID
-        Ok(_) => unreachable!()
+            match game_update_execution_result {
+                Ok(rows_affected) => {
+                    if rows_affected > 0 {
+                        info!("Game {} successfully finalized with score and finished_at timestamp.", g.id);
+                    } else {
+                        info!("Game {} not yet finalized (all challenges might not be scored or already finished).", g.id);
+                    }
+                }
+                Err(e) => {
+                    error!("Error updating game {} with final score/time/finished_at: {:?}", g.id, e);
+                    // Not returning an error to client here, as challenge was successfully submitted.
+                    // This is an internal data consistency issue if it fails.
+                }
+            }
+            StatusCode::OK.into_response()
+        }
+        Ok(_) => unreachable!("Updated more than one challenge with the same ID.")
     }
 }

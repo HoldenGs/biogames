@@ -14,6 +14,15 @@ use crate::establish_db_connection;
 use crate::models::{ValidatedRequest, NewRegisteredUser};
 use crate::schema::registered_users;
 use diesel::insert_into;
+#[cfg(not(feature = "allow_email_reuse"))]
+use crate::schema::email_registry;
+#[cfg(not(feature = "allow_email_reuse"))]
+use sha2::Sha256;
+#[cfg(not(feature = "allow_email_reuse"))]
+use sha2::Digest;
+#[cfg(not(feature = "allow_email_reuse"))]
+use hex;
+use std::string::String;
 
 // Dictionary of common words to use in ID generation
 const WORDS: &[&str] = &[
@@ -39,10 +48,18 @@ impl IntoResponse for GenerateUserIdResponse {
     }
 }
 
+#[cfg(not(feature = "allow_email_reuse"))]
+fn hash_email(email: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(email.to_lowercase().as_bytes());
+    hex::encode(hasher.finalize())
+}
+
 pub async fn generate_user_id(
     ValidatedRequest(payload): ValidatedRequest<GenerateUserIdRequest>,
 ) -> impl IntoResponse {
     let connection = &mut establish_db_connection();
+
 
     // Validate that it's a UCLA email
     if !payload.email.ends_with("@ucla.edu") && !payload.email.ends_with("@mednet.ucla.edu") {
@@ -51,6 +68,24 @@ pub async fn generate_user_id(
             user_id: String::new(),
             message: "Only UCLA email addresses are allowed".to_string(),
         }.into_response();
+    }
+
+    // Check if the email is used already (only if email reuse is not allowed)
+    #[cfg(not(feature = "allow_email_reuse"))]
+    {
+        let email_hash = hash_email(&payload.email);
+
+        let email_exists = diesel::dsl::select(diesel::dsl::exists(
+            email_registry::table.filter(email_registry::email_hash.eq(email_hash.clone()))
+        )).get_result::<bool>(connection).unwrap_or(false);
+
+        if email_exists {
+            return GenerateUserIdResponse {
+                success: false,
+                user_id: String::new(),
+                message: "This email address has already been used! Please use your existing user_id or contact an admin if you don't have it.".to_string()
+            }.into_response();
+        }
     }
 
     // Generate a unique user ID
@@ -77,6 +112,30 @@ pub async fn generate_user_id(
             break id;
         }
     };
+
+    // Record email hash for tracking (only if email reuse prevention is enabled)
+    #[cfg(not(feature = "allow_email_reuse"))]
+    {
+        let email_hash = hash_email(&payload.email);
+        match insert_into(email_registry::table)
+            .values(email_registry::email_hash.eq(&email_hash.clone()))
+            .execute(connection) {
+                Ok(_) => println!("-> Email hash has been recorded"),
+                Err(e) => {
+                    eprintln!("Error inserting mail hash: {}", e);
+                    return GenerateUserIdResponse {
+                        success: false,
+                        user_id: String::new(),
+                        message: format!("Database error while recording email: {}", e),
+                    }.into_response();
+                }
+            }
+    }
+
+    #[cfg(feature = "allow_email_reuse")]
+    {
+        println!("-> Email reuse is allowed, skipping email hash recording");
+    }
 
     // Insert the new user_id (without username) into the database so further checks will succeed
     let new_user = NewRegisteredUser { user_id: user_id.clone(), username: None };
@@ -218,7 +277,4 @@ pub async fn generate_user_id(
         user_id,
         message: "User ID generated successfully. In production, this would be emailed to the provided address.".to_string(),
     }.into_response()
-
-    // TODO: add email text here and actually get it sent out
-
 } 

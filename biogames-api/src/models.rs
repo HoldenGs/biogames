@@ -15,13 +15,14 @@ use validator::Validate;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Game {
     pub id: i32,
-    pub username: String,
+    pub username: Option<String>,
     pub started_at: DateTime<Utc>,
     pub finished_at: Option<DateTime<Utc>>,
     pub score: Option<i32>,
     pub max_score: i32,
     pub time_taken_ms: Option<i32>,
-    pub game_type: String
+    pub game_type: String,
+    pub user_id: String
 }
 
 #[derive(Debug, Queryable, QueryableByName, Selectable, Insertable, AsChangeset)]

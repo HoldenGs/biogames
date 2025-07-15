@@ -103,7 +103,7 @@ pub async fn get_game(Path(game_id): Path<i32>) -> impl IntoResponse {
     // Return the game response regardless of whether game.score is set
     return GameResponse {
         id: game_id,
-        user: game.username.clone(),
+        user: game.user_id.clone(),
         results: Some(grouped_results),
         total_points: Some(total_points)
     }.into_response();

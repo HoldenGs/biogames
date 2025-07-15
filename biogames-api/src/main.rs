@@ -67,7 +67,7 @@ async fn main() {
         .route("/challenges/:id/core", get(get_challenge_core))
         .route("/leaderboard", get(get_leaderboard))
         .route("/validate-username/:username", get(validate_username))
-        .route("/check-game-type/:username", get(check_game_type))
+        .route("/check-game-type/:user_id", get(check_game_type))
         .route("/check-username/:user_id", get(check_username))
         .route("/generate-user-id", post(generate_user_id))
         .route("/register-with-username", post(register_with_username))

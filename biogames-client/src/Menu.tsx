@@ -189,9 +189,10 @@ function Menu({ mode }: MenuProps) {
                         )}
 
                         <p className="text-justify">
-                            {mode === "pretest" 
+                            {/* {mode === "pretest" 
                                 ? "Welcome to the pre-test! Please enter your User ID and choose a username to begin."
-                                : "Enter your User ID below and click \"Play\" to start the game."}
+                                : "Enter your User ID below and click \"Play\" to start the game."} */}
+                            Enter your User ID below and click \"Play\" to start the game.
                         </p>
 
                         <div>
@@ -199,7 +200,7 @@ function Menu({ mode }: MenuProps) {
                         </div>
 
                         {mode === "pretest" 
-                            ? <PreTestPlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} isInitialChallengeImageReady={isInitialImagePreloaded} /> 
+                            ? <PlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} isInitialChallengeImageReady={isInitialImagePreloaded} /> 
                             : <PlayForm mode={mode} disabled={screenTooSmall} initialHer2CoreId={previewCoreData?.her2_core_id} isInitialChallengeImageReady={isInitialImagePreloaded} />}
                         
                         {/* Display preloading status */}
@@ -258,7 +259,7 @@ function Menu({ mode }: MenuProps) {
                     )}
                 </div>
             </div>
-            <Leaderboard game_id={Number(7)}/>
+            {/* <Leaderboard game_id={Number(7)}/> */}
         </div>
 
         {showInstructions && (<Instructions onClose={() => setShowInstructions(false)}/>)}

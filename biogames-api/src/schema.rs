@@ -23,13 +23,15 @@ diesel::table! {
     games (id) {
         id -> Int4,
         #[max_length = 32]
-        username -> Varchar,
+        username -> Nullable<Varchar>,
         started_at -> Timestamptz,
         finished_at -> Nullable<Timestamptz>,
         score -> Nullable<Int4>,
         max_score -> Int4,
         time_taken_ms -> Nullable<Int4>,
         game_type -> Varchar,
+        #[max_length = 32]
+        user_id -> Varchar,
     }
 }
 

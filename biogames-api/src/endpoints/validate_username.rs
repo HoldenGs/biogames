@@ -76,7 +76,7 @@ pub async fn validate_username(
 ) -> impl IntoResponse {
     tracing::info!("Validating user_id: '{}' with context: {:?}", user_id_str, query_params.context);
     let connection = &mut establish_db_connection();
-
+    
     #[cfg(feature = "training_direct_entry")]
     {
         let user_record_result = registered_users::table
@@ -140,11 +140,11 @@ pub async fn validate_username(
                     create_dummy_pretest_if_not_exists(connection, &user_id_str);
                     
                     (StatusCode::OK, Json(json!({ "user_id": user_id_str, "status": "created", "username": user_id_str }))).into_response()
-                } else {
+    } else {
                     // User does not exist, and context is not training
                     tracing::info!("User_id '{}' not found and context is not training. Returning 404.", user_id_str);
                     (StatusCode::NOT_FOUND, Json(json!({ "error": "User ID not found" }))).into_response()
-                }
+    }
             }
         }
     }

@@ -35,14 +35,20 @@ function IntroductionPage() {
         body: JSON.stringify({ email: emailInput }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
         console.log(response);
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to register');
       }
 
-      // Parse generated user ID and store it for authentication
-      const data = await response.json();
+      if (!data.success) {
+        setError(data.message || "registration failed");
+        setLoading(false);
+        return;
+      }
+
       setUserId(data.user_id);
       setEmailInStorage(emailInput);
       setSuccess(true);

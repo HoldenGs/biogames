@@ -26,11 +26,13 @@ function GamePage({ mode }: GamePageProps) {
     const location = useLocation();
     const { gameId: gameIdFromUrl, challengeId: challengeIdFromUrl } = useParams<{ gameId?: string, challengeId?: string }>();
 
+    const searchParams = new URLSearchParams(location.search);
+    const modeFromUrl = searchParams.get('mode') || mode;
+    
     const initialHer2CoreIdFromState = location.state?.initialHer2CoreId as number | undefined;
     const currentGameMode = getGameMode(); // Get game mode once per render
 
-    console.log(`[GamePage] TOP RENDER. Mode prop: ${mode}, gameIdFromUrl: ${gameIdFromUrl}, challengeIdFromUrl: ${challengeIdFromUrl}, Auth gameMode: ${currentGameMode}, initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
-
+    console.log(`[GamePage] TOP RENDER. Mode prop: ${mode}, Mode from URL: ${modeFromUrl}, gameIdFromUrl: ${gameIdFromUrl}, challengeIdFromUrl: ${challengeIdFromUrl}, Auth gameMode: ${currentGameMode}, initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
     const [activeGameId, setActiveGameId] = useState<number | null>(null);
     const initialCreationAttemptedRef = useRef(false);
     const authUserId = getUserId();
@@ -49,7 +51,7 @@ function GamePage({ mode }: GamePageProps) {
         queryKey: ['challenge', activeGameId],
         queryFn: async () => {
             if (!activeGameId) throw new Error("activeGameId is null, cannot fetch challenge.");
-            console.log(`[GamePage] challengeQuery START. Mode prop: ${mode}, Auth gameMode: ${currentGameMode}. Fetching for activeGameId: ${activeGameId}`);
+            console.log(`[GamePage] challengeQuery START. Mode prop: ${modeFromUrl}, Auth gameMode: ${currentGameMode}. Fetching for activeGameId: ${activeGameId}`);
             const url = `${API_BASE_URL}/games/${activeGameId}/challenge`;
             const response = await fetch(url);
             if (!response.ok) {
@@ -60,11 +62,11 @@ function GamePage({ mode }: GamePageProps) {
                 throw new Error(specificError);
             }
             const data: CurrentChallengeResponse = await response.json(); // Ensure data is typed here
-            console.log(`[GamePage] challengeQuery SUCCESS. Mode: ${mode}, Auth GameMode: ${currentGameMode}. Fetched data:`, JSON.parse(JSON.stringify(data)));
+            console.log(`[GamePage] challengeQuery SUCCESS. Mode: ${modeFromUrl}, Auth GameMode: ${currentGameMode}. Fetched data:`, JSON.parse(JSON.stringify(data)));
             console.log(`[GamePage] challengeQuery SUCCESS. Challenge ID from API: ${data?.id}, Core ID from API: ${data?.core_id}`);
             if (data.id && (String(data.id) !== challengeIdFromUrl || !challengeIdFromUrl)) {
-                const challengePath = mode === 'training' ? `/game/${activeGameId}/${data.id}` : `/${mode}/game/${activeGameId}/${data.id}`;
-                console.log(`[GamePage] challengeQuery - Navigating to update challengeId. Mode: ${mode}. Target: ${challengePath}. Will pass initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
+                const challengePath = modeFromUrl === 'training' ? `/game/${activeGameId}/${data.id}` : `/${modeFromUrl}/game/${activeGameId}/${data.id}`;
+                console.log(`[GamePage] challengeQuery - Navigating to update challengeId. Mode: ${modeFromUrl}. Target: ${challengePath}. Will pass initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
                 navigate(challengePath, { replace: true, state: { initialHer2CoreId: initialHer2CoreIdFromState } });
             }
             return data;
@@ -74,7 +76,7 @@ function GamePage({ mode }: GamePageProps) {
         refetchOnWindowFocus: false,
         staleTime: 1000 * 60 * 5,
         onError: (err: Error) => {
-            console.error(`[GamePage] challengeQuery FAILED. Mode: ${mode}, Auth GameMode: ${currentGameMode}. Error:`, err.message);
+            console.error(`[GamePage] challengeQuery FAILED. Mode: ${modeFromUrl}, Auth GameMode: ${currentGameMode}. Error:`, err.message);
         }
     });
 
@@ -123,8 +125,8 @@ function GamePage({ mode }: GamePageProps) {
             requestBody.initial_her2_core_id = initialHer2CoreIdFromState;
         }
 
-        console.debug(`[GamePage] createGameAsync() called: mode=${mode}, body:`, JSON.stringify(requestBody));
-        const url = `${API_BASE_URL}/games?mode=${mode}` + (mode === 'pretest' ? '&num_challenges=50' : '');
+        console.debug(`[GamePage] createGameAsync() called: mode=${modeFromUrl}, body:`, JSON.stringify(requestBody));
+        const url = `${API_BASE_URL}/games?mode=${modeFromUrl}` + (modeFromUrl === 'pretest' ? '&num_challenges=50' : '');
         let res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -166,13 +168,13 @@ function GamePage({ mode }: GamePageProps) {
         onSuccess: (newGameData) => {
             console.log(`[GamePage] createGameMutation SUCCESS. Mode: ${mode}, Auth GameMode: ${currentGameMode}. New game ID: ${newGameData.id}.`);
             setGameCreationError(null); // Clear our specific error state
-            const gamePath = mode === 'training' ? `/game/${newGameData.id}` : `/${mode}/game/${newGameData.id}`;
+            const gamePath = modeFromUrl === 'training' ? `/game/${newGameData.id}` : `/${modeFromUrl}/game/${newGameData.id}`;
             console.log(`[GamePage] Navigating to: ${gamePath}. Will pass initialHer2CoreIdFromState: ${initialHer2CoreIdFromState}`);
             setActiveGameId(newGameData.id);
             navigate(gamePath, { replace: true, state: { initialHer2CoreId: initialHer2CoreIdFromState } });
         },
         onError: (error) => {
-            console.error(`[GamePage] createGameMutation FAILED. Mode: ${mode}, Auth GameMode: ${currentGameMode}. Error:`, error.message);
+            console.error(`[GamePage] createGameMutation FAILED. Mode: ${modeFromUrl}, Auth GameMode: ${currentGameMode}. Error:`, error.message);
             setGameCreationError(error); // Use React state to signal the error
             // forceRender(r => r + 1); // This might no longer be needed if setGameCreationError reliably re-renders
         }
@@ -206,7 +208,7 @@ function GamePage({ mode }: GamePageProps) {
                  console.log("[GamePage] No gameId in URL, but game creation mutation is already loading. Relevant for subsequent renders after initial attempt.");
             }
         }
-    }, [gameIdFromUrl, authUserId, mode]);
+    }, [gameIdFromUrl, authUserId, modeFromUrl]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -255,7 +257,7 @@ function GamePage({ mode }: GamePageProps) {
                 if (!response.ok) { console.error('[GamePage] Prefetch metadata fetch failed:', response.status, await response.text()); throw new Error('Prefetch metadata failed'); }
                 const data = await response.json();
                 if (data.id) {
-                    const nextImageUrl = `${API_BASE_URL}/challenges/${data.id}/core?mode=${mode}`;
+                    const nextImageUrl = `${API_BASE_URL}/challenges/${data.id}/core?mode=${modeFromUrl}`;
                     if (!document.querySelector(`link[rel="preload"][href="${nextImageUrl}"]`)) {
                         const link = document.createElement('link');
                         link.rel = 'preload'; link.as = 'image'; link.href = nextImageUrl;
@@ -267,7 +269,7 @@ function GamePage({ mode }: GamePageProps) {
         }).catch((error) => {
             console.error('[GamePage] Prefetch query for next challenge metadata failed:', error);
         });
-    }, [activeGameId, challengeQuery.data, mode, queryClient]);
+    }, [activeGameId, challengeQuery.data, modeFromUrl, queryClient]);
 
     const scoreMutation = useMutation<void, Error, number>({
         mutationFn: async (guess: number) => {
@@ -403,7 +405,7 @@ function GamePage({ mode }: GamePageProps) {
     // Challenge data IS available. Check for game completion.
     if (challengeQuery.data.completed_challenges === challengeQuery.data.total_challenges) {
         const finalAuthGameMode = getGameMode();
-        console.log(`[GamePage] Game COMPLETED. Mode prop: ${mode}, Auth gameMode: ${finalAuthGameMode}. Navigating...`);
+        console.log(`[GamePage] Game COMPLETED. Mode prop: ${modeFromUrl}, Auth gameMode: ${finalAuthGameMode}. Navigating...`);
         if (finalAuthGameMode === 'pretest' || finalAuthGameMode === 'posttest') {
             if (finalAuthGameMode === 'pretest') { AuthSetGameMode('training'); }
             return (<Navigate to={`/menu`}/>);
@@ -485,7 +487,7 @@ function GamePage({ mode }: GamePageProps) {
                     </button>
                 ))}
             </div>
-            <div className="flex flex-col gap-2 h-full">
+            <div className="flex flex-col gap-2 h-full vt-auto">
                 <button className="bg-gray-500 hover:bg-gray-600 text-white rounded p-2 w-full transition-colors duration-150"
                     onClick={() => setShowInstructions(!showInstructions)}>
                     {showInstructions ? 'Hide' : 'Show'} Instructions
@@ -509,6 +511,7 @@ function GamePage({ mode }: GamePageProps) {
                 </a>
                 <button className="bg-red-500 hover:bg-red-700 text-white rounded p-2 w-full whitespace-nowrap transition-colors duration-150"
                     disabled={quitMutation.isLoading}
+                    data-testid="quit-game-button"
                     onClick={() => activeGameId !== null && quitMutation.mutate(activeGameId)}>
                     {quitMutation.isLoading ? 'Quitting...' : 'Quit Game'}
                 </button>

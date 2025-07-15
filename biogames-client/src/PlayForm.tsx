@@ -22,10 +22,11 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
     
     const initialValues: PlayFormValues = { user_id: '' }; // always start blank
     const [localGameMode, setLocalGameMode] = useState<string>(mode);
+    const [error, setError] = useState<string>("");
     
     useEffect(() => {
         // Only verify and override mode for pretest/posttest; keep training as-is
-        if (mode === 'training') return;
+        //if (mode === 'training') return;
         // Handle persistence when page is refreshed
         if (storedUserId) {
             const verifyUserAndDetermineMode = async () => {
@@ -45,8 +46,9 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                         return;
                     }
                     
-                    // Check if user has a username
-                    const usernameCheckResponse = await fetch(`${API_BASE_URL}/check-username/${storedUserId}`, {
+                    
+                    // Determine game type based on progress
+                    const gameTypeResponse = await fetch(`${API_BASE_URL}/check-game-type/${storedUserId}`, {
                         method: 'GET',
                         headers: {
                             'Cache-Control': 'no-cache',
@@ -54,46 +56,27 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                         },
                     });
                     
-                    if (usernameCheckResponse.status === 200) {
-                        const usernameData = await usernameCheckResponse.json();
-                        if (!usernameData.has_username) {
-                            // User doesn't have a username, should go to pretest
-                            setLocalGameMode('pretest');
-                            return;
-                        }
-                        
-                        // Use the actual username for checking game type
-                        if (usernameData.username) {
-                            // Determine game type based on progress
-                            const gameTypeResponse = await fetch(`${API_BASE_URL}/check-game-type/${usernameData.username}`, {
-                                method: 'GET',
-                                headers: {
-                                    'Cache-Control': 'no-cache',
-                                    'Pragma': 'no-cache',
-                                },
-                            });
-                            
-                            if (gameTypeResponse.status === 200) {
-                                const json = await gameTypeResponse.json();
-                                if (json) {
-                                    if (json.pretest == 0) {
-                                        setLocalGameMode('pretest');
-                                    } else if (json.training < 400) {
-                                        setLocalGameMode('training');
-                                    } else if (json.posttest == 0) {
-                                        setLocalGameMode('posttest');
-                                    } else {
-                                        setLocalGameMode('finished');
-                                    }
-                                    if (storedUserId.endsWith('admin')) {
-                                        setLocalGameMode('training');
-                                    }
-                                }
+                    if (gameTypeResponse.status === 200) {
+                        const json = await gameTypeResponse.json();
+                        if (json) {
+                            if (json.pretest == 0) {
+                                setLocalGameMode('pretest');
+                            } else if (json.training < 5) {
+                                setLocalGameMode('training');
+                            } else if (json.posttest == 0) {
+                                setLocalGameMode('posttest');
+                            } else {
+                                setLocalGameMode('finished');
+                            }
+                            if (storedUserId.endsWith('admin')) {
+                                setLocalGameMode('training');
                             }
                         }
                     }
                 } catch (error) {
-                    console.error('Error verifying user on refresh:', error);
+                    let err: string = `Error verifying user on refresh: ${error}`;
+                    console.error(err);
+                    setError(err);
                 }
             };
             
@@ -123,12 +106,12 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                 });
                 
                 if (validationResponse.status !== 200) {
+                    console.log("No user with this user_id found!!!");
                     errors.user_id = 'Invalid User ID';
                     return errors;
                 }
-                
-                // Next check if this user has a username
-                const usernameCheckResponse = await fetch(`${API_BASE_URL}/check-username/${values.user_id}`, {
+
+                const gameTypeResponse = await fetch(`${API_BASE_URL}/check-game-type/${values.user_id}`, {
                     method: 'GET',
                     headers: {
                         'Cache-Control': 'no-cache',
@@ -136,53 +119,35 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                     },
                 });
                 
-                if (usernameCheckResponse.status === 200) {
-                    const usernameData = await usernameCheckResponse.json();
-                    if (!usernameData.has_username) {
-                        // User doesn't have a username, redirect to pretest
-                        setLocalGameMode('pretest');
-                        return errors;
-                    }
-                    
-                    // Use the actual username for checking game type
-                    if (usernameData.username) {
-                        // Check game type for users with usernames
-                        const gameTypeResponse = await fetch(`${API_BASE_URL}/check-game-type/${usernameData.username}`, {
-                            method: 'GET',
-                            headers: {
-                                'Cache-Control': 'no-cache',
-                                'Pragma': 'no-cache',
-                            },
-                        });
-                        
-                        if (gameTypeResponse.status === 200) {
-                            const json = await gameTypeResponse.json();
-                            if (json) {
-                                if (json.pretest == 0) {
-                                    setLocalGameMode('pretest');
-                                } else if (json.training < 400) {
-                                    setLocalGameMode('training');
-                                } else if (json.posttest == 0) {
-                                    setLocalGameMode('posttest');
-                                } else {
-                                    setLocalGameMode('finished');
-                                }
-                                if (values.user_id?.endsWith('admin')) {
-                                    setLocalGameMode('training');
-                                }
-                                console.log("Game mode:", localGameMode);
-                            } else {
-                                console.error('Empty response body');
-                            }
+                if (gameTypeResponse.status === 200) {
+                    const json = await gameTypeResponse.json();
+                    if (json) {
+                        if (json.pretest == 0) {
+                            setLocalGameMode('pretest');
+                        } else if (json.training < 5) {
+                            setLocalGameMode('training');
+                        } else if (json.posttest == 0) {
+                            setLocalGameMode('posttest');
                         } else {
-                            console.error('Error checking game type:', gameTypeResponse.status);
-                            errors.user_id = 'Error checking game type';
+                            setLocalGameMode('finished');
                         }
+                        if (values.user_id?.endsWith('admin')) {
+                            setLocalGameMode('training');
+                        }
+                        console.log("Game mode:", localGameMode);
+                    } else {
+                        console.error('Empty response body');
                     }
+                } else {
+                    let err: string = `Error verifying user on refresh: ${error}`;
+                    console.error(err);
+                    setError(err);
                 }
             } catch (error) {
                 console.error('Error validating username:', error);
-                errors.user_id = 'Error validating user ID';
+                let err: string = `Error verifying user on refresh: ${error}`;
+                console.error(err);
+                setError(err);
             }
         }
         return errors;
@@ -190,52 +155,20 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
 
     const submit = async (values: PlayFormValues, { setSubmitting }: FormikHelpers<PlayFormValues>) => {
         setSubmitting(true);
+        
+        if (error == "") {
             setUserId(values.user_id);
-        
-        if (localGameMode === 'pretest') {
-            // For pretest, username is typically set during the pretest/registration process itself.
-            // Navigating to pretest/menu will handle this.
-            navigate(`/pretest/menu`, { state: { initialHer2CoreId } });
-        } else {
-            // For other modes (e.g., training), fetch and set the username associated with the user_id.
-            try {
-                const usernameCheckResponse = await fetch(`${API_BASE_URL}/check-username/${values.user_id}`, {
-                    method: 'GET',
-                    headers: {
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache',
-                    },
-                });
 
-                if (usernameCheckResponse.ok) {
-                    const usernameData = await usernameCheckResponse.json();
-                    if (usernameData.username) {
-                        setUsername(usernameData.username); // Set the actual username from the API
-                    } else {
-                        // Fallback or error: No username found for this user_id.
-                        // This might mean the user_id is valid but has no username yet,
-                        // which should ideally be caught by validation or handled in a specific way.
-                        console.warn(`[PlayForm] submit: No username found for user_id: ${values.user_id}. Display name might default to 'Player'.`);
-                        // Optionally, clear any stale username: setUsername(null);
-                    }
-                } else {
-                    const errorText = await usernameCheckResponse.text();
-                    console.error(`[PlayForm] submit: Failed to fetch username for user_id: ${values.user_id}. Status: ${usernameCheckResponse.status}, ${errorText}`);
-                    // Optionally, clear any stale username: setUsername(null);
-                }
-            } catch (error) {
-                console.error('[PlayForm] submit: Error fetching username:', error);
-                // Optionally, clear any stale username: setUsername(null);
-            }
-            
-            // Set the game mode for training, etc.
-            // Make sure localGameMode is appropriate here; it's updated by validate/useEffect
-            setGameMode(localGameMode); 
+            setGameMode(localGameMode);
             navigate(`/game?mode=${localGameMode}`, { state: { initialHer2CoreId } });
+            
+            
+        } else {
+            console.log("error validating user");
         }
-        
         setSubmitting(false);
     };
+
 
     return (
         <Formik
