@@ -36,9 +36,9 @@ function ResultsPage({ mode }: ResultsPageProps) {
             <h3 className="text-4xl mb-2">Game complete!</h3>
             <div className="flex flex-col gap-4 md:grid md:grid-rows-[1.4rem_1fr] md:grid-cols-2">
                 <h4 className="text-3xl md:order-1">Your score: {gameQuery.data.total_points}</h4>
-                {/* <div className="border border-black h-min md:order-3">
+                <div className="border border-black h-min md:order-3">
                     <Leaderboard game_id={Number(id ?? 0)}/>
-                </div> */}
+                </div>
                 <h4 className="text-3xl md:order-2">Game Summary</h4>
                 <div className="text-right md:order-4">
                     <ResultsDisplay

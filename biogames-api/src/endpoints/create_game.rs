@@ -87,35 +87,35 @@ pub async fn create_game(
     use crate::schema::games::dsl as gdsl;
 
     // Lookup display-username from registered_users by user_id (now body.user_id)
-    // let real_username: String = match rudsl::registered_users
-    //     .filter(rudsl::user_id.eq(&body.user_id))
-    //     .select(rudsl::username)
-    //     .first::<Option<String>>(connection)
-    // {
-    //     Ok(db_username_value_option) => {
-    //         if let Some(name_str) = db_username_value_option {
-    //             name_str
-    //         } else {
-    //             // The user_id was found, but their username column in the DB is NULL.
-    //             return (
-    //                 StatusCode::BAD_REQUEST,
-    //                 format!("User ID '{}' was found, but no username is set for it. Please register a username.", body.user_id),
-    //             )
-    //             .into_response();
-    //         }
-    //     },
-    //     Err(diesel::NotFound) => { // No user record found for the given body.user_id
-    //         return (
-    //             StatusCode::BAD_REQUEST,
-    //             format!("No registered user found for User ID '{}'", body.user_id),
-    //         )
-    //         .into_response();
-    //     }
-    //     Err(e) => { // Some other database error occurred
-    //         event!(Level::ERROR, "Database error when fetching username for User ID {}: {:?}", body.user_id, e);
-    //         return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve user data due to a database error.").into_response();
-    //     }
-    // };
+    let real_username: String = match rudsl::registered_users
+        .filter(rudsl::user_id.eq(&body.user_id))
+        .select(rudsl::username)
+        .first::<Option<String>>(connection)
+    {
+        Ok(db_username_value_option) => {
+            if let Some(name_str) = db_username_value_option {
+                name_str
+            } else {
+                // The user_id was found, but their username column in the DB is NULL.
+                return (
+                    StatusCode::BAD_REQUEST,
+                    format!("User ID '{}' was found, but no username is set for it. Please register a username.", body.user_id),
+                )
+                .into_response();
+            }
+        },
+        Err(diesel::NotFound) => { // No user record found for the given body.user_id
+            return (
+                StatusCode::BAD_REQUEST,
+                format!("No registered user found for User ID '{}'", body.user_id),
+            )
+            .into_response();
+        }
+        Err(e) => { // Some other database error occurred
+            event!(Level::ERROR, "Database error when fetching username for User ID {}: {:?}", body.user_id, e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to retrieve user data due to a database error.").into_response();
+        }
+    };
 
     let pretest_condition = user_id.eq(&body.user_id).and(game_type.eq("pretest"));
     let pretest_count: i64 = gdsl::games
@@ -198,7 +198,12 @@ pub async fn create_game(
 
     // create game
     let game = insert_into(games)
-        .values((user_id.eq(body.user_id.clone()), max_score.eq(challenges_per_game * 5), game_type.eq(&mode)))
+        .values((
+            user_id.eq(body.user_id.clone()), 
+            username.eq(real_username.clone()),  // Add the username!
+            max_score.eq(challenges_per_game * 5), 
+            game_type.eq(&mode)
+        ))
         .get_result::<Game>(connection).unwrap();
 
     let mut final_challenges: Vec<Challenge> = Vec::new();
@@ -333,7 +338,7 @@ pub async fn create_game(
 
     Json(GameResponse {
         id: game.id,
-        user: game.user_id,
+        user: game.username,
         results: None,
         total_points: None
     }).into_response()

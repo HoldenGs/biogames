@@ -117,7 +117,7 @@ pub struct CreateGameRequest {
 #[derive(Serialize)]
 pub struct GameResponse {
     pub id: i32,
-    pub user: String,
+    pub user: Option<String>,
     pub results: Option<GameResultsResponse>,
     pub total_points: Option<i32>
 }

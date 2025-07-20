@@ -30,26 +30,36 @@ pub async fn get_leaderboard(Query(_body): Query<GetLeaderboardRequest>) -> impl
                 AVG(time_taken_ms)::integer AS avg_time_taken_ms
             FROM (
                 SELECT
-                    *,
+                    username,
+                    score,
+                    time_taken_ms,
+                    user_id,
                     ROW_NUMBER() OVER (
                         PARTITION BY user_id
-                        ORDER BY score DESC, time_taken_ms
+                        ORDER BY score DESC, time_taken_ms ASC
                     ) AS rank
                 FROM games
-                WHERE score IS NOT NULL AND time_taken_ms IS NOT NULL AND game_type = 'training'
+                WHERE score IS NOT NULL 
+                  AND time_taken_ms IS NOT NULL 
+                  AND game_type = 'training'
+                  AND username IS NOT NULL
             ) ranked_games
-            WHERE rank <= 1
-            GROUP BY user_id
-            ORDER BY avg_score DESC, avg_time_taken_ms;
+            WHERE rank <= 2
+            GROUP BY user_id, username
+            ORDER BY avg_score DESC, avg_time_taken_ms ASC;
         "#;
 
     let results = sql_query(query)
         .get_results::<LeaderboardEntry>(connection);
 
     match results {
-        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        Err(error) => {
+            tracing::debug!("error at get_leaderboard: {}", error);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        },
         Ok(entries) => LeaderboardResponse {
             entries: entries.into_iter()
+            
             .map(|entry| LeaderboardEntryResponse {
                 username: entry.username,
                 score: entry.avg_score,

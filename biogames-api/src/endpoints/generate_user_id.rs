@@ -55,107 +55,6 @@ fn hash_email(email: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
-pub async fn generate_user_id(
-    ValidatedRequest(payload): ValidatedRequest<GenerateUserIdRequest>,
-) -> impl IntoResponse {
-    let connection = &mut establish_db_connection();
-
-
-    // Validate that it's a UCLA email
-    if !payload.email.ends_with("@ucla.edu") && !payload.email.ends_with("@mednet.ucla.edu") {
-        return GenerateUserIdResponse {
-            success: false,
-            user_id: String::new(),
-            message: "Only UCLA email addresses are allowed".to_string(),
-        }.into_response();
-    }
-
-    // Check if the email is used already (only if email reuse is not allowed)
-    #[cfg(not(feature = "allow_email_reuse"))]
-    {
-        let email_hash = hash_email(&payload.email);
-
-        let email_exists = diesel::dsl::select(diesel::dsl::exists(
-            email_registry::table.filter(email_registry::email_hash.eq(email_hash.clone()))
-        )).get_result::<bool>(connection).unwrap_or(false);
-
-        if email_exists {
-            return GenerateUserIdResponse {
-                success: false,
-                user_id: String::new(),
-                message: "This email address has already been used! Please use your existing user_id or contact an admin if you don't have it.".to_string()
-            }.into_response();
-        }
-    }
-
-    // Generate a unique user ID
-    let user_id = loop {
-        // Select a random word
-        let word = WORDS.choose(&mut thread_rng()).unwrap();
-        
-        // Generate 2 random digits
-        let digits: String = (0..2)
-            .map(|_| thread_rng().gen_range(0..10).to_string())
-            .collect();
-        
-        // Format the ID as "UCLA_word##"
-        let id = format!("UCLA_{}{}", word, digits);
-        
-        // Check if this ID is already used
-        let id_exists = diesel::dsl::select(diesel::dsl::exists(
-            registered_users::table.filter(registered_users::user_id.eq(&id)),
-        ))
-        .get_result::<bool>(connection)
-        .unwrap_or(false);
-        
-        if !id_exists {
-            break id;
-        }
-    };
-
-    // Record email hash for tracking (only if email reuse prevention is enabled)
-    #[cfg(not(feature = "allow_email_reuse"))]
-    {
-        let email_hash = hash_email(&payload.email);
-        match insert_into(email_registry::table)
-            .values(email_registry::email_hash.eq(&email_hash.clone()))
-            .execute(connection) {
-                Ok(_) => println!("-> Email hash has been recorded"),
-                Err(e) => {
-                    eprintln!("Error inserting mail hash: {}", e);
-                    return GenerateUserIdResponse {
-                        success: false,
-                        user_id: String::new(),
-                        message: format!("Database error while recording email: {}", e),
-                    }.into_response();
-                }
-            }
-    }
-
-    #[cfg(feature = "allow_email_reuse")]
-    {
-        println!("-> Email reuse is allowed, skipping email hash recording");
-    }
-
-    // Insert the new user_id (without username) into the database so further checks will succeed
-    let new_user = NewRegisteredUser { user_id: user_id.clone(), username: None };
-    match insert_into(registered_users::table)
-        .values(&new_user)
-        .execute(connection) {
-            Ok(count) => println!("→ Inserted {} row(s) for user_id {}", count, user_id),
-        Err(e) => {
-            eprintln!("Error inserting new user_id into database: {}", e);
-            return GenerateUserIdResponse {
-                success: false,
-                user_id: String::new(),
-                message: format!("Database insertion error: {}", e),
-            }.into_response();
-        }
-    }
-
-    use std::process::{Command, Stdio};
-use std::io::Write;
-
 pub fn send_user_email(user_id: &str, email: &str) {
     let email_body = format!(
         r#"To: {email}
@@ -315,6 +214,107 @@ entitled.
         eprintln!("Failed to send email to {}", email);
     }
 }
+
+pub async fn generate_user_id(
+    ValidatedRequest(payload): ValidatedRequest<GenerateUserIdRequest>,
+) -> impl IntoResponse {
+    let connection = &mut establish_db_connection();
+
+
+    // Validate that it's a UCLA email
+    if !payload.email.ends_with("@ucla.edu") && !payload.email.ends_with("@mednet.ucla.edu") {
+        return GenerateUserIdResponse {
+            success: false,
+            user_id: String::new(),
+            message: "Only UCLA email addresses are allowed".to_string(),
+        }.into_response();
+    }
+
+    // Check if the email is used already (only if email reuse is not allowed)
+    #[cfg(not(feature = "allow_email_reuse"))]
+    {
+        let email_hash = hash_email(&payload.email);
+
+        let email_exists = diesel::dsl::select(diesel::dsl::exists(
+            email_registry::table.filter(email_registry::email_hash.eq(email_hash.clone()))
+        )).get_result::<bool>(connection).unwrap_or(false);
+
+        if email_exists {
+            return GenerateUserIdResponse {
+                success: false,
+                user_id: String::new(),
+                message: "This email address has already been used! Please use your existing user_id or contact an admin if you don't have it.".to_string()
+            }.into_response();
+        }
+    }
+
+    // Generate a unique user ID
+    let user_id = loop {
+        // Select a random word
+        let word = WORDS.choose(&mut thread_rng()).unwrap();
+        
+        // Generate 2 random digits
+        let digits: String = (0..2)
+            .map(|_| thread_rng().gen_range(0..10).to_string())
+            .collect();
+        
+        // Format the ID as "UCLA_word##"
+        let id = format!("UCLA_{}{}", word, digits);
+        
+        // Check if this ID is already used
+        let id_exists = diesel::dsl::select(diesel::dsl::exists(
+            registered_users::table.filter(registered_users::user_id.eq(&id)),
+        ))
+        .get_result::<bool>(connection)
+        .unwrap_or(false);
+        
+        if !id_exists {
+            break id;
+        }
+    };
+
+    // Record email hash for tracking (only if email reuse prevention is enabled)
+    #[cfg(not(feature = "allow_email_reuse"))]
+    {
+        let email_hash = hash_email(&payload.email);
+        match insert_into(email_registry::table)
+            .values(email_registry::email_hash.eq(&email_hash.clone()))
+            .execute(connection) {
+                Ok(_) => println!("-> Email hash has been recorded"),
+                Err(e) => {
+                    eprintln!("Error inserting mail hash: {}", e);
+                    return GenerateUserIdResponse {
+                        success: false,
+                        user_id: String::new(),
+                        message: format!("Database error while recording email: {}", e),
+                    }.into_response();
+                }
+            }
+    }
+
+    #[cfg(feature = "allow_email_reuse")]
+    {
+        println!("-> Email reuse is allowed, skipping email hash recording");
+    }
+
+    // Insert the new user_id (without username) into the database so further checks will succeed
+    let new_user = NewRegisteredUser { user_id: user_id.clone(), username: None };
+    match insert_into(registered_users::table)
+        .values(&new_user)
+        .execute(connection) {
+            Ok(count) => println!("→ Inserted {} row(s) for user_id {}", count, user_id),
+        Err(e) => {
+            eprintln!("Error inserting new user_id into database: {}", e);
+            return GenerateUserIdResponse {
+                success: false,
+                user_id: String::new(),
+                message: format!("Database insertion error: {}", e),
+            }.into_response();
+        }
+    }
+
+    // Send the email
+    send_user_email(&user_id, &payload.email);
 
     GenerateUserIdResponse {
         success: true,
