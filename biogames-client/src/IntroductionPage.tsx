@@ -78,7 +78,7 @@ function IntroductionPage() {
             </p>
             <p className="mb-6 text-gray-600">
               To begin, please enter your <strong>@mednet.ucla.edu</strong>, <strong>@ucla.edu</strong>, or <strong>@mail.huji.ac.il</strong> email address below. We will email you a unique User ID that you will need to use throughout the study.
-          </p>
+            </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
@@ -88,7 +88,7 @@ function IntroductionPage() {
                   value={emailInput} 
                   onChange={(e) => setEmailInput(e.target.value)} 
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="your_email@mednet.ucla.edu/ucla.edu/mail.huji.ac.il"
+                  placeholder="your_email@example.edu"
                 required
               />
             </div>

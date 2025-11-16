@@ -222,7 +222,7 @@ pub async fn generate_user_id(
 
 
     // Validate that it's a UCLA email
-    if !payload.email.ends_with("@mednet.ucla.edu") {
+    if !payload.email.ends_with("@ucla.edu") && !payload.email.ends_with("@mednet.ucla.edu") && !payload.email.ends_with("@mail.huji.ac.il") {
         return GenerateUserIdResponse {
             success: false,
             user_id: String::new(),

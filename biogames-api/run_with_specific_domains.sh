@@ -2,7 +2,7 @@
 
 # Set feature flags to allow specific domains
 export BYPASS_EMAIL_VALIDATION=false
-export ALLOWED_EMAIL_DOMAINS="@ucla.edu,@mednet.ucla.edu"
+export ALLOWED_EMAIL_DOMAINS="@ucla.edu,@mednet.ucla.edu,@mail.huji.ac.il"
 
 echo "Running API with specific allowed email domains"
 echo "ALLOWED_EMAIL_DOMAINS=$ALLOWED_EMAIL_DOMAINS"
