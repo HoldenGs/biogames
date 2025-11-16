@@ -85,7 +85,7 @@ async fn main() {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
     tracing::debug!("listening on {}", addr);
-    Server::bind("[::]:3001".parse().unwrap())
+    Server::bind(addr)
         .serve(app.into_make_service())
         .await
         .unwrap();

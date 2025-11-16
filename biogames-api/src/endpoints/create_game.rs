@@ -187,6 +187,8 @@ pub async fn create_game(
         ).into_response();
     }
 
+    // log requested mode
+    
     let is_test = requested_mode == "posttest" || requested_mode == "pretest";
     let mode = requested_mode.to_string();
     

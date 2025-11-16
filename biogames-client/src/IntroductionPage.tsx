@@ -11,7 +11,7 @@ function IntroductionPage() {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
   const [agreed, setAgreed] = useState(false);
-  const emailIsValid = emailInput.endsWith('@ucla.edu') || emailInput.endsWith('@mednet.ucla.edu');
+  const emailIsValid = emailInput.endsWith('@mednet.ucla.edu');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,8 +19,8 @@ function IntroductionPage() {
     setError(null);
 
     // Validate email format client-side
-    if (!emailInput.endsWith('@ucla.edu') && !emailInput.endsWith('@mednet.ucla.edu')) {
-      setError('Please enter a valid @ucla.edu or @mednet.ucla.edu email address');
+    if (!emailInput.endsWith('@mednet.ucla.edu')) {
+      setError('Please enter a valid @mednet.ucla.edu email address');
       setLoading(false);
       return;
     }
@@ -77,7 +77,7 @@ function IntroductionPage() {
               All data collected will be <strong>anonymized and used solely for research</strong>. Your privacy is important to us. You can withdraw from the study at any time.
             </p>
             <p className="mb-6 text-gray-600">
-              To begin, please enter your <strong>@ucla.edu</strong> or <strong>@mednet.ucla.edu</strong> email address below. We will email you a unique User ID that you will need to use throughout the study.
+              To begin, please enter your <strong>@mednet.ucla.edu</strong> email address below. We will email you a unique User ID that you will need to use throughout the study.
           </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -88,7 +88,7 @@ function IntroductionPage() {
                   value={emailInput} 
                   onChange={(e) => setEmailInput(e.target.value)} 
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="your_email@ucla.edu"
+                  placeholder="your_email@mednet.ucla.edu"
                 required
               />
             </div>

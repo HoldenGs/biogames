@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 pub static IMAGE_BASE_PATH: Lazy<PathBuf> = Lazy::new(|| {
     env::var("IMAGE_BASE_PATH")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/media/biogames/BiogamesSSD/Data"))
+        .unwrap_or_else(|_| PathBuf::from("/home/biogames/biogames-repo/Data_WebP"))
 });
 
 // Function to get the full path of an image

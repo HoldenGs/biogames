@@ -2,7 +2,7 @@
 
 # Set the database URL and image base path
 export DATABASE_URL="postgres://postgres:innovate123@127.0.0.1/biogames"
-export IMAGE_BASE_PATH="/media/biogames/BiogamesSSD/Data"
+export IMAGE_BASE_PATH="/home/biogames/biogames-repo/Data_WebP"
 
 echo "Testing image path access..."
 echo "Database: $DATABASE_URL"

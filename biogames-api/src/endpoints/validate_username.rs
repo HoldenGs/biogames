@@ -24,10 +24,6 @@ pub struct ValidateUsernameQuery {
     context: Option<String>,
 }
 
-#[cfg(feature = "training_direct_entry")]
-// Helper function to create a dummy pretest game if one doesn't exist
-// Removed create_dummy_pretest_if_not_exists function since users must complete real pretest now
-
 pub async fn validate_username(
     Path(user_id_str): Path<String>,
     Query(query_params): Query<ValidateUsernameQuery>
