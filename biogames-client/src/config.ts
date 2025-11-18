@@ -11,5 +11,5 @@
 //   : '/proxy-api';
 
 // Original, commented out for reference:
-//export const API_BASE_URL = '/proxy-api'; // TODO: Make sure your reverse proxy is configured for /proxy-api/
- export const API_BASE_URL = 'http://164.67.195.107:3001'; // OLD VALUE 
+export const API_BASE_URL = '/proxy-api'; // TODO: Make sure your reverse proxy is configured for /proxy-api/
+//  export const API_BASE_URL = 'http://164.67.195.107:3001'; // OLD VALUE 
