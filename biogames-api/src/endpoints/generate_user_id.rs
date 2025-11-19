@@ -221,8 +221,8 @@ pub async fn generate_user_id(
     let connection = &mut establish_db_connection();
 
 
-    // Validate that it's a UCLA email
-    if !payload.email.ends_with("@ucla.edu") && !payload.email.ends_with("@mednet.ucla.edu") && !payload.email.ends_with("@mail.huji.ac.il") {
+    // Validate that it's an allowed email
+    if !payload.email.ends_with("@ucla.edu") && !payload.email.ends_with("@mednet.ucla.edu") && !payload.email.ends_with("@mail.huji.ac.il") && !payload.email.ends_with("@hadassah.org.il") {
         return GenerateUserIdResponse {
             success: false,
             user_id: String::new(),

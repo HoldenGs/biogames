@@ -11,7 +11,7 @@ function IntroductionPage() {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
   const [agreed, setAgreed] = useState(false);
-  const emailIsValid = emailInput.endsWith('@mednet.ucla.edu') || emailInput.endsWith('@ucla.edu') || emailInput.endsWith('@mail.huji.ac.il');
+  const emailIsValid = emailInput.endsWith('@mednet.ucla.edu') || emailInput.endsWith('@ucla.edu') || emailInput.endsWith('@mail.huji.ac.il') || emailInput.endsWith('@hadassah.org.il');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,8 +19,8 @@ function IntroductionPage() {
     setError(null);
 
     // Validate email format client-side
-    if (!emailInput.endsWith('@mednet.ucla.edu') && !emailInput.endsWith('@ucla.edu') && !emailInput.endsWith('@mail.huji.ac.il')) {
-      setError('Please enter a valid @mednet.ucla.edu, @ucla.edu, or @mail.huji.ac.il email address');
+    if (!emailInput.endsWith('@mednet.ucla.edu') && !emailInput.endsWith('@ucla.edu') && !emailInput.endsWith('@mail.huji.ac.il') && !emailInput.endsWith('@hadassah.org.il')) {
+      setError('Please enter a valid @mednet.ucla.edu, @ucla.edu, @mail.huji.ac.il, or @hadassah.org.il email address');
       setLoading(false);
       return;
     }
@@ -77,7 +77,7 @@ function IntroductionPage() {
               All data collected will be <strong>anonymized and used solely for research</strong>. Your privacy is important to us. You can withdraw from the study at any time.
             </p>
             <p className="mb-6 text-gray-600">
-              To begin, please enter your <strong>@mednet.ucla.edu</strong>, <strong>@ucla.edu</strong>, or <strong>@mail.huji.ac.il</strong> email address below. We will email you a unique User ID that you will need to use throughout the study.
+              To begin, please enter your <strong>@mednet.ucla.edu</strong>, <strong>@ucla.edu</strong>, <strong>@mail.huji.ac.il</strong>, or <strong>@hadassah.org.il</strong> email address below. We will email you a unique User ID that you will need to use throughout the study.
             </p>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
