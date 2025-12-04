@@ -9,6 +9,14 @@ export default defineConfig({
     port: 3000, // Or whatever port you prefer
     strictPort: true, // Ensure Vite doesn't try other ports if 3000 is taken
     host: true, // Expose to all network interfaces
+    proxy: {
+      '/proxy-api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/proxy-api/, '')
+      }
+    }
   },
   base: './', // Use relative paths for all assets
   build: {
