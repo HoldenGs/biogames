@@ -50,7 +50,7 @@ function Menu({ mode }: MenuProps) {
         const checkScreenSize = () => {
             const width = window.innerWidth;
             const height = window.innerHeight;
-            setScreenTooSmall(width < 768 || height < 768);
+            setScreenTooSmall(width < 640 || height < 600);
         };
 
         checkScreenSize();
