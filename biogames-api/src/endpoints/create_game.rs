@@ -158,23 +158,48 @@ pub async fn create_game(
         );
 
         if (requested_mode == "pretest" && pretest_count > 0) || (requested_mode == "posttest" && posttest_count > 0) {
-            let existing_game_id_option: Option<i32> = gdsl::games
+            let existing_game_result = gdsl::games
                 .filter(gdsl::user_id.eq(&body.user_id)
                 .and(gdsl::game_type.eq(requested_mode)))
                 .order(gdsl::id.desc())
-                .select(gdsl::id)
-                .first::<i32>(connection)
-                .ok();
-            
-            if let Some(existing_id) = existing_game_id_option {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(json!({
-                        "error": format!("An active {} game (ID: {}) already exists for this user.", requested_mode, existing_id),
-                        "message": format!("Game limit reached or prerequisites not met for {} mode", requested_mode),
-                        "existing_game_id": existing_id
-                    }))
-                ).into_response();
+                .first::<Game>(connection);
+
+            match existing_game_result {
+                // newly added to account for the case when the user is partway through
+                // their pretest (pretest_count == 1) but have not completed it yet
+                // due to a page refresh, crash, etc.
+                Ok(existing_game) => {
+                    tracing::debug!(
+                        "Resuming existing {} game {} for user {}",
+                        requested_mode,
+                        existing_game.id,
+                        body.user_id
+                    );
+
+                    return Json(GameResponse {
+                        id: existing_game.id,
+                        user: existing_game.username.clone(),
+                        results: None,
+                        total_points: None,
+                    }).into_response();
+                }
+                Err(e) => {
+                    event!(
+                        Level::ERROR,
+                        "Expected existing {} game for user {} but failed to fetch it: {:?}",
+                        requested_mode,
+                        body.user_id,
+                        e
+                    );
+
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(json!({
+                            "error": format!("Game limit reached or prerequisites not met for {} mode", requested_mode),
+                            "message": format!("Game limit reached or prerequisites not met for {} mode", requested_mode)
+                        }))
+                    ).into_response();
+                }
             }
         }
 
