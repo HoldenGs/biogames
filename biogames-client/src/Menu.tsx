@@ -50,13 +50,15 @@ function Menu({ mode }: MenuProps) {
         const checkScreenSize = () => {
             const width = window.innerWidth;
             const height = window.innerHeight;
-            setScreenTooSmall(width < 640 || height < 600);
+            console.log('viewport:', width, height);
+            setScreenTooSmall(window.innerWidth < 640);
         };
-
+      
         checkScreenSize();
         window.addEventListener('resize', checkScreenSize);
         return () => window.removeEventListener('resize', checkScreenSize);
     }, []);
+      
 
     useEffect(() => {
         queryClient.invalidateQueries(['game']);
