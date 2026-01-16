@@ -23,6 +23,15 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
     const initialValues: PlayFormValues = { user_id: '' }; // always start blank
     const [localGameMode, setLocalGameMode] = useState<string>(mode);
     const [error, setError] = useState<string>("");
+    const [hasValidUser, setHasValidUser] = useState(false);
+
+    useEffect(() => {
+        if (!storedUserId) {
+          setLocalGameMode("inactive");
+          setHasValidUser(false);
+          setGameMode("inactive");
+        }
+      }, [storedUserId]);      
     
     useEffect(() => {
         // Only verify and override mode for pretest/posttest; keep training as-is
@@ -43,9 +52,14 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                     if (validationResponse.status !== 200) {
                         // Invalid user ID, clear session storage
                         console.log("Invalid user ID on refresh");
+                        setHasValidUser(false);
+                        setLocalGameMode("inactive");
+                        setGameMode("inactive");
                         return;
-                    }
-                    
+                      }
+                      
+                    // Else, valid
+                    setHasValidUser(true);
                     
                     // Determine game type based on progress
                     const gameTypeResponse = await fetch(`${API_BASE_URL}/check-game-type/${storedUserId}`, {
@@ -158,7 +172,7 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
         
         if (error == "") {
             setUserId(values.user_id);
-
+            
             setGameMode(localGameMode);
             navigate(`/game?mode=${localGameMode}`, { state: { initialHer2CoreId } });
             
