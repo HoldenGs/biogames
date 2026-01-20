@@ -235,15 +235,20 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                             <div className="text-danger-500">
                                 Screen too small... please use a larger device or resize your window to continue.
                             </div>
-                        ) : mode === 'training' && localGameMode === 'pretest'?
+                        ) : mode === 'training' && localGameMode === 'pretest'? 
                         (
                             <div className="text-danger-500">You can't train until you’ve completed your pretest.</div>
-                        ) : mode === 'posttest' && localGameMode === 'pretest'?
+                        ) : mode === 'posttest' && localGameMode === 'pretest'? 
                         (
                             <div className="text-danger-500">You can't take the posttest until you’ve completed your pretest.</div>
-                        ) : localGameMode === 'pretest' ? (
+                        ) : mode === 'posttest' && localGameMode === 'training'? 
+                        (
+                            <div className="text-danger-500">You can't take the posttest until you’ve completed at least one training run.</div>
+                        ) : localGameMode === 'pretest' ? 
+                        (
                             <div className="text-primary-500">You're about to start your pretest!</div>
-                        ) : localGameMode === 'training' && canPlay ? (
+                        ) : localGameMode === 'training' && canPlay ? 
+                        (
                             <div className="text-primary-500">You're about to start a training run!</div>
                         ) : null
                     }
