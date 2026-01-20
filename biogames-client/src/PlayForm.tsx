@@ -189,6 +189,7 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
         setSubmitting(true);
 
         if (error == "") {
+            setUsername(values.user_id);
             setUserId(values.user_id);
 
             const resolved = resolvedModeRef.current;
