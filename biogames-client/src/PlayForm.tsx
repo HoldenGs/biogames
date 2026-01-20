@@ -1,5 +1,5 @@
 import { Formik, Form, Field, ErrorMessage, FormikHelpers } from "formik";
-import { setUsername, getUsername, setGameMode, getGameMode, setUserId } from "./Auth";
+import { setUsername, getUsername, setGameMode, getGameMode, setUserId, getUserId } from "./Auth";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "./config";
 import { useState, useEffect, useRef } from "react";
@@ -41,7 +41,7 @@ function resolveLocalMode(pageMode: string, p: Progress, isAdmin: boolean) {
 
 function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChallengeImageReady }: PlayFormProps) {
     const navigate = useNavigate();
-    const storedUserId = getUsername(); // may exist but we won't auto-fill
+    const storedUserId = getUserId(); // may exist but we won't auto-fill
 
     const initialValues: PlayFormValues = { user_id: '' }; // always start blank
     const [localGameMode, setLocalGameMode] = useState<string>(mode);
@@ -189,7 +189,6 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
         setSubmitting(true);
 
         if (error == "") {
-            setUsername(values.user_id);
             setUserId(values.user_id);
 
             const resolved = resolvedModeRef.current;
