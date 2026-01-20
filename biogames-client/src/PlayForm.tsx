@@ -2,7 +2,7 @@ import { Formik, Form, Field, ErrorMessage, FormikHelpers } from "formik";
 import { setUsername, getUsername, setGameMode, getGameMode, setUserId } from "./Auth";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "./config";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 
 interface PlayFormValues {
@@ -16,23 +16,49 @@ interface PlayFormProps {
     isInitialChallengeImageReady?: boolean;
 }
 
+type Progress = { pretest: number; training: number; posttest: number };
+
+function resolveLocalMode(pageMode: string, p: Progress, isAdmin: boolean) {
+    if (isAdmin) return "training";
+    if (p.pretest === 0) return "pretest";
+
+    const hasAtLeastOneTraining = p.training >= 1;
+
+    if (pageMode === "posttest") {
+        if (!hasAtLeastOneTraining) return "training";
+        if (p.posttest === 0) return "posttest";
+        return "finished";
+    }
+
+    if (pageMode === "training") {
+        return "training";
+    }
+
+    if (!hasAtLeastOneTraining) return "training";
+    if (p.posttest === 0) return "posttest";
+    return "finished";
+}
+
 function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChallengeImageReady }: PlayFormProps) {
     const navigate = useNavigate();
     const storedUserId = getUsername(); // may exist but we won't auto-fill
-    
+
     const initialValues: PlayFormValues = { user_id: '' }; // always start blank
     const [localGameMode, setLocalGameMode] = useState<string>(mode);
     const [error, setError] = useState<string>("");
     const [hasValidUser, setHasValidUser] = useState(false);
 
+    const resolvedModeRef = useRef<string>(mode);
+
     useEffect(() => {
         if (!storedUserId) {
-          setLocalGameMode("inactive");
-          setHasValidUser(false);
-          setGameMode("inactive");
+            resolvedModeRef.current = "inactive";
+            setLocalGameMode("inactive");
+            setHasValidUser(false);
+            setGameMode("inactive");
         }
-      }, [storedUserId]);      
-    
+    }, [storedUserId]);
+
     useEffect(() => {
         // Only verify and override mode for pretest/posttest; keep training as-is
         //if (mode === 'training') return;
@@ -48,45 +74,36 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                             'Pragma': 'no-cache',
                         },
                     });
-                    
+
                     if (validationResponse.status !== 200) {
                         // Invalid user ID, clear session storage
                         console.log("Invalid user ID on refresh");
                         setHasValidUser(false);
+                        resolvedModeRef.current = "inactive";
                         setLocalGameMode("inactive");
                         setGameMode("inactive");
                         return;
-                      }
-                      
+                    }
+
                     // Else, valid
                     setHasValidUser(true);
-                    
+
                     // Determine game type based on progress
                     const gameTypeResponse = await fetch(`${API_BASE_URL}/check-game-type/${storedUserId}`, {
                         method: 'GET',
                         headers: {
                             'Cache-Control': 'no-cache',
-                            'Pragma': 'no-cache',
+                            Pragma: 'no-cache',
                         },
                     });
-                    
+
                     if (gameTypeResponse.status === 200) {
                         const json = await gameTypeResponse.json();
                         if (json) {
-                            if (json.pretest == 0) {
-                                setLocalGameMode('pretest');
-                            } else if (json.training < 1) {
-                                setLocalGameMode('training');
-                            }else if (json.training > 1 && json.training < 5) {
-                                setLocalGameMode(mode); // whatever the mode is unless mode is pretest
-                            } else if (json.posttest == 0) {
-                                setLocalGameMode('posttest');
-                            } else {
-                                setLocalGameMode('finished');
-                            }
-                            if (storedUserId.endsWith('admin')) {
-                                setLocalGameMode('training');
-                            }
+                            const isAdmin = storedUserId.endsWith("admin");
+                            const resolved = resolveLocalMode(mode, json, isAdmin);
+                            resolvedModeRef.current = resolved;
+                            setLocalGameMode(resolved);
                         }
                     }
                 } catch (error) {
@@ -95,10 +112,10 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                     setError(err);
                 }
             };
-            
+
             verifyUserAndDetermineMode();
         }
-    }, [storedUserId]);
+    }, [storedUserId, mode]);
 
     const validate = async (values: PlayFormValues) => {
         const errors: { user_id?: string } = {};
@@ -109,10 +126,10 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
         } else {
             try {
                 // First check if this is a valid user_id
-                let url = mode === 'training' 
-                    ? `${API_BASE_URL}/validate-username/${values.user_id}?context=training` 
-                    : `${API_BASE_URL}/validate-username/${values.user_id}`;
-                
+                let url = mode === 'training'
+                        ? `${API_BASE_URL}/validate-username/${values.user_id}?context=training`
+                        : `${API_BASE_URL}/validate-username/${values.user_id}`;
+
                 const validationResponse = await fetch(url, {
                     method: 'GET',
                     headers: {
@@ -120,7 +137,7 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                         'Pragma': 'no-cache',
                     },
                 });
-                
+
                 if (validationResponse.status !== 200) {
                     console.log("No user with this user_id found!!!");
                     errors.user_id = 'Invalid User ID';
@@ -134,23 +151,15 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                         'Pragma': 'no-cache',
                     },
                 });
-                
+
                 if (gameTypeResponse.status === 200) {
                     const json = await gameTypeResponse.json();
                     if (json) {
-                        if (json.pretest == 0) {
-                            setLocalGameMode('pretest');
-                        } else if (json.training < 5) {
-                            setLocalGameMode('training');
-                        } else if (json.posttest == 0) {
-                            setLocalGameMode('posttest');
-                        } else {
-                            setLocalGameMode('finished');
-                        }
-                        if (values.user_id?.endsWith('admin')) {
-                            setLocalGameMode('training');
-                        }
-                        console.log("Game mode:", localGameMode);
+                        const isAdmin = values.user_id?.endsWith("admin") ?? false;
+                        const resolved = resolveLocalMode(mode, json, isAdmin);
+                        resolvedModeRef.current = resolved;
+                        setLocalGameMode(resolved);
+                        console.log('Resolved mode:', resolved);
                     } else {
                         console.error('Empty response body');
                     }
@@ -171,14 +180,13 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
 
     const submit = async (values: PlayFormValues, { setSubmitting }: FormikHelpers<PlayFormValues>) => {
         setSubmitting(true);
-        
+
         if (error == "") {
             setUserId(values.user_id);
 
-            setGameMode(localGameMode);
-            navigate(`/game?mode=${localGameMode}`, { state: { initialHer2CoreId } });
-            
-            
+            const resolved = resolvedModeRef.current;
+            setGameMode(resolved);
+            navigate(`/game?mode=${resolved}`, { state: { initialHer2CoreId } });
         } else {
             console.log("error validating user");
         }
@@ -187,9 +195,9 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
 
 
     return (
-        <Formik
-            initialValues={initialValues}
-            validate={validate}
+        <Formik 
+            initialValues={initialValues} 
+            validate={validate} 
             onSubmit={submit}
         >
             {({ errors, isSubmitting }) => (
