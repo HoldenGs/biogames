@@ -25,7 +25,7 @@ function resolveLocalMode(pageMode: string, p: Progress, isAdmin: boolean) {
     const hasAtLeastOneTraining = p.training >= 1;
 
     if (pageMode === "posttest") {
-        if (!hasAtLeastOneTraining) return "training";
+        if (!hasAtLeastOneTraining) return "inactive";
         if (p.posttest === 0) return "posttest";
         return "finished";
     }
