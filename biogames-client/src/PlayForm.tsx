@@ -243,7 +243,7 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                             <div className="text-danger-500">You can't take the posttest until you’ve completed your pretest.</div>
                         ) : localGameMode === 'pretest' ? (
                             <div className="text-primary-500">You're about to start your pretest!</div>
-                        ) : localGameMode === 'training' ? (
+                        ) : localGameMode === 'training' && canPlay ? (
                             <div className="text-primary-500">You're about to start a training run!</div>
                         ) : null
                     }
