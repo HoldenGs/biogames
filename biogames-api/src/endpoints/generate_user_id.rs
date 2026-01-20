@@ -55,6 +55,13 @@ fn hash_email(email: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
+fn email_domain(email: &str) -> Option<String> {
+    let e = email.trim().to_lowercase();
+    let at = e.rfind('@')?;
+    let domain = e[(at + 1)..].trim();
+    if domain.is_empty() { None } else { Some(domain.to_string()) }
+}
+
 pub fn send_user_email(user_id: &str, email: &str) {
     let email_body = format!(
         r#"To: {email}
@@ -277,8 +284,9 @@ pub async fn generate_user_id(
     #[cfg(not(feature = "allow_email_reuse"))]
     {
         let email_hash = hash_email(&payload.email);
+        let domain = email_domain(&payload.email);
         match insert_into(email_registry::table)
-            .values(email_registry::email_hash.eq(&email_hash.clone()))
+            .values(email_registry::email_hash.eq(&email_hash.clone()), email_registry::email_domain.eq(domain.as_deref()))
             .execute(connection) {
                 Ok(_) => println!("-> Email hash has been recorded"),
                 Err(e) => {

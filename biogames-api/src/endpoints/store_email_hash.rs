@@ -37,10 +37,16 @@ pub async fn store_email_hash(
         }
     };
 
+    // Convert to lowercase to prevent duplicates
+    let email_lc = payload.email.trim().to_lowercase();
+
     // Hash the email
     let mut hasher = Sha256::new();
-    hasher.update(payload.email.as_bytes());
+    hasher.update(payload.email_lc.as_bytes());
     let hash = format!("{:x}", hasher.finalize());
+
+    // Parse domain
+    let domain = email_domain(&email_lc);
 
     // Check if this email hash already exists
     let exists = email_registry::table
@@ -56,7 +62,7 @@ pub async fn store_email_hash(
         }
         Ok(None) => {
             // Email hash doesn't exist, create it
-            let new_email = NewEmailRegistry { email_hash: hash };
+            let new_email = NewEmailRegistry { email_hash: hash, email_domain: domain };
             match diesel::insert_into(email_registry::table)
                 .values(&new_email)
                 .execute(&mut conn)

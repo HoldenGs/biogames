@@ -16,6 +16,7 @@ diesel::table! {
     email_registry (id) {
         id -> Int4,
         email_hash -> Text,
+        email_domain -> Nullable<Text>,
     }
 }
 
