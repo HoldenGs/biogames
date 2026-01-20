@@ -286,7 +286,7 @@ pub async fn generate_user_id(
         let email_hash = hash_email(&payload.email);
         let domain = email_domain(&payload.email);
         match insert_into(email_registry::table)
-            .values(email_registry::email_hash.eq(&email_hash.clone()), email_registry::email_domain.eq(domain.as_deref()))
+            .values((email_registry::email_hash.eq(&email_hash.clone()), email_registry::email_domain.eq(domain.as_deref())))
             .execute(connection) {
                 Ok(_) => println!("-> Email hash has been recorded"),
                 Err(e) => {
