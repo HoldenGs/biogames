@@ -25,10 +25,10 @@ function resolveLocalMode(pageMode: string, p: Progress, isAdmin: boolean) {
     const hasAtLeastOneTraining = p.training >= 1;
 
     if (pageMode === "posttest") {
-        if (!hasAtLeastOneTraining) return "inactive";
+        if (!hasAtLeastOneTraining) return "training";
         if (p.posttest === 0) return "posttest";
         return "finished";
-    }
+    }    
 
     if (pageMode === "training") {
         return "training";
@@ -49,6 +49,13 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
     const [hasValidUser, setHasValidUser] = useState(false);
 
     const resolvedModeRef = useRef<string>(mode);
+    const canPlay = !disabled && isInitialChallengeImageReady && localGameMode !== "finished" &&
+    (
+        (mode === "pretest" && localGameMode === "pretest") ||
+        (mode === "training" && localGameMode === "training") ||
+        (mode === "posttest" && localGameMode === "posttest")
+    );
+
 
     useEffect(() => {
         if (!storedUserId) {
@@ -214,16 +221,14 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                             className={`border ${errors.user_id && 'border-danger-500'} px-2 w-full`}
                         />
                         <button
-                            className={`px-4 py-2 text-white w-[100px] ${disabled || localGameMode === 'finished' || localGameMode === 'posttest' || !isInitialChallengeImageReady
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-primary-500 hover:bg-primary-600'
+                            className={`px-4 py-2 text-white w-[100px] ${
+                                !canPlay ? "bg-gray-400 cursor-not-allowed" : "bg-primary-500 hover:bg-primary-600"
                             }`}
                             type="submit"
-                            disabled={disabled || localGameMode === 'finished' || localGameMode === 'posttest' || !isInitialChallengeImageReady}
-                        >
-                            {isInitialChallengeImageReady ? 'Play' : 'Loading...'}
+                            disabled={!canPlay}
+                            >
+                            {isInitialChallengeImageReady ? "Play" : "Loading..."}
                         </button>
-                        
                     </div>
                     {
                         disabled ? (
