@@ -75,8 +75,10 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
                         if (json) {
                             if (json.pretest == 0) {
                                 setLocalGameMode('pretest');
-                            } else if (json.training < 5) {
+                            } else if (json.training < 1) {
                                 setLocalGameMode('training');
+                            }else if (json.training > 1 && json.training < 5) {
+                                setLocalGameMode(mode); // whatever the mode is unless mode is pretest
                             } else if (json.posttest == 0) {
                                 setLocalGameMode('posttest');
                             } else {
@@ -172,7 +174,7 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
         
         if (error == "") {
             setUserId(values.user_id);
-            
+
             setGameMode(localGameMode);
             navigate(`/game?mode=${localGameMode}`, { state: { initialHer2CoreId } });
             
