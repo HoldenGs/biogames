@@ -43,7 +43,7 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
     const navigate = useNavigate();
     const storedUserId = getUserId(); // may exist but we won't auto-fill
 
-    const initialValues: PlayFormValues = { user_id: '' }; // always start blank
+    const initialValues: PlayFormValues = { user_id: storedUserId ?? '' };
     const [localGameMode, setLocalGameMode] = useState<string>(mode);
     const [error, setError] = useState<string>("");
     const [hasValidUser, setHasValidUser] = useState(false);
@@ -202,7 +202,8 @@ function PlayForm({ mode, disabled = false, initialHer2CoreId, isInitialChalleng
 
 
     return (
-        <Formik 
+        <Formik
+            enableReinitialize 
             initialValues={initialValues} 
             validate={validate} 
             onSubmit={submit}
