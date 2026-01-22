@@ -262,7 +262,11 @@ function Menu({ mode }: MenuProps) {
             </div>
             <Leaderboard game_id={Number(7)}/>
         </div>
-
+        <div className="relative flex items-center justify-center mb-2">
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSdPnLjSqg5K6XG6QFQKSw_W8piNsBIDYK2q6QAIoQE4m2yAog/viewform?usp=dialog" className="text-primary-500 underline">
+                    Found a bug? Let us know!
+            </a>
+        </div>
         {showInstructions && (<Instructions onClose={() => setShowInstructions(false)}/>)}
         </>
     );
