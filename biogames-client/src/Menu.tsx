@@ -247,7 +247,7 @@ function Menu({ mode }: MenuProps) {
                     )}
                     {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && previewCoreData && (
                         <figure className="flex flex-col gap-1 w-full">
-                            <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3242418/">
+                            <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3242418/" target="_blank" rel="noopener noreferrer">
                                 <img 
                                     src={paper}
                                     alt={`BioGames microscope slide viewer interface illustration`} 
