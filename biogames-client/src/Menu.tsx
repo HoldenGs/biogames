@@ -247,13 +247,15 @@ function Menu({ mode }: MenuProps) {
                     )}
                     {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && previewCoreData && (
                         <figure className="flex flex-col gap-1 w-full">
-                            <img 
-                                src={paper}
-                                alt={`BioGames microscope slide viewer interface illustration`} 
-                                className="border border-black max-w-full h-auto max-h-[400px] object-contain"
-                            />
+                            <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3242418/">
+                                <img 
+                                    src={paper}
+                                    alt={`BioGames microscope slide viewer interface illustration`} 
+                                    className="border border-black max-w-full h-auto max-h-[400px] object-contain"
+                                />
+                            </a>
                             <figcaption className="text-xs text-center">BioGames: HER2 Scoring Challenge</figcaption>
-                    </figure>
+                        </figure>
                     )}
                     {!isLoadingPreviewCoreId && !isErrorPreviewCoreId && !previewCoreData && (
                         <p>No preview image available.</p>
