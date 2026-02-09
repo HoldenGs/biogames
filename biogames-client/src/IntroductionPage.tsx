@@ -152,6 +152,11 @@ function IntroductionPage() {
           <strong>IRB Approval:</strong> This study has been reviewed and approved by the UCLA Institutional Review Board (IRB-24-5794).
         </p>
       </div>
+      <div className="relative flex items-center justify-center my-2">
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSdPnLjSqg5K6XG6QFQKSw_W8piNsBIDYK2q6QAIoQE4m2yAog/viewform?usp=dialog" className="text-primary-500 underline">
+          Found a bug? Let us know!
+        </a>
+      </div>
     </div>
   );
 }
