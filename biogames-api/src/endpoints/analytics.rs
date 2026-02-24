@@ -35,7 +35,7 @@ struct GamesRow {
 
     // Often BIGINT in Postgres; if it's INT4 in your schema, swap to Nullable<Int4> + Option<i32>.
     #[diesel(sql_type = Nullable<BigInt>)]
-    time_taken_ms: Option<i64>,
+    time_taken_ms: Option<i32>,
 
     #[diesel(sql_type = Nullable<Text>)]
     game_type: Option<String>,
