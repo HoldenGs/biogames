@@ -4,118 +4,131 @@ use axum::{
 };
 use diesel::prelude::*;
 use diesel::sql_query;
-use diesel::sql_types::{Int4, Nullable, Text, Timestamp};
+use diesel::sql_types::{BigInt, Int4, Nullable, Text, Timestamp};
 use serde::Serialize;
 
 use crate::establish_db_connection;
 
+// -------------------------
+// Row structs (one per table)
+// -------------------------
+
 #[derive(QueryableByName, Debug, Serialize)]
-struct TrainingRunRow {
-    #[diesel(sql_type = Text)]
-    username: String,
+struct GamesRow {
+    #[diesel(sql_type = Int4)]
+    id: i32,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    username: Option<String>,
+
+    #[diesel(sql_type = Nullable<Timestamp>)]
+    started_at: Option<chrono::NaiveDateTime>,
+
+    #[diesel(sql_type = Nullable<Timestamp>)]
+    finished_at: Option<chrono::NaiveDateTime>,
 
     #[diesel(sql_type = Nullable<Int4>)]
-    pretest: Option<i32>,
-    #[diesel(sql_type = Nullable<Timestamp>)]
-    pretest_started_at: Option<chrono::NaiveDateTime>,
-    #[diesel(sql_type = Nullable<Timestamp>)]
-    pretest_finished_at: Option<chrono::NaiveDateTime>,
+    score: Option<i32>,
 
     #[diesel(sql_type = Nullable<Int4>)]
-    posttest: Option<i32>,
-    #[diesel(sql_type = Nullable<Timestamp>)]
-    posttest_started_at: Option<chrono::NaiveDateTime>,
-    #[diesel(sql_type = Nullable<Timestamp>)]
-    posttest_finished_at: Option<chrono::NaiveDateTime>,
+    max_score: Option<i32>,
+
+    // Your schema says time_taken_ms exists; this is often BIGINT in Postgres.
+    // If it's actually Int4 in your DB, switch BigInt -> Int4 and i64 -> i32.
+    #[diesel(sql_type = Nullable<BigInt>)]
+    time_taken_ms: Option<i64>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    game_type: Option<String>,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    user_id: Option<String>,
+}
+
+#[derive(QueryableByName, Debug, Serialize)]
+struct ChallengesRow {
+    #[diesel(sql_type = Int4)]
+    id: i32,
 
     #[diesel(sql_type = Int4)]
     game_id: i32,
 
+    // Your schema says core_id exists; type is likely Int4.
     #[diesel(sql_type = Int4)]
-    training_score: i32,
+    core_id: i32,
+
+    #[diesel(sql_type = Nullable<Text>)]
+    guess: Option<String>,
 
     #[diesel(sql_type = Nullable<Timestamp>)]
-    run_started_at: Option<chrono::NaiveDateTime>,
+    started_at: Option<chrono::NaiveDateTime>,
+
     #[diesel(sql_type = Nullable<Timestamp>)]
-    run_submitted_at: Option<chrono::NaiveDateTime>,
+    submitted_at: Option<chrono::NaiveDateTime>,
 }
 
-const SQL: &str = r#"
-WITH training_runs AS (
-  SELECT
-    g.username,
-    g.id AS game_id,
-    g.score AS training_score,
-    MIN(c.started_at)   AS run_started_at,
-    MAX(c.submitted_at) AS run_submitted_at
-  FROM games g
-  JOIN challenges c
-    ON c.game_id = g.id
-  WHERE g.game_type = 'training'
-    AND g.username IS NOT NULL
-    AND g.score IS NOT NULL
-  GROUP BY g.username, g.id, g.score
-),
+#[derive(QueryableByName, Debug, Serialize)]
+struct RegisteredUsersRow {
+    #[diesel(sql_type = Int4)]
+    id: i32,
 
-pretest AS (
-  SELECT
-    g.username,
-    MAX(g.score)       AS pretest,
-    MAX(g.started_at)  AS pretest_started_at,
-    MAX(g.finished_at) AS pretest_finished_at
-  FROM games g
-  WHERE g.game_type = 'pretest'
-    AND g.username IS NOT NULL
-  GROUP BY g.username
-),
+    #[diesel(sql_type = Text)]
+    user_id: String,
 
-posttest AS (
-  SELECT
-    g.username,
-    MAX(g.score)       AS posttest,
-    MAX(g.started_at)  AS posttest_started_at,
-    MAX(g.finished_at) AS posttest_finished_at
-  FROM games g
-  WHERE g.game_type = 'posttest'
-    AND g.username IS NOT NULL
-  GROUP BY g.username
-)
+    #[diesel(sql_type = Nullable<Text>)]
+    username: Option<String>,
 
-SELECT
-  tr.username,
+    #[diesel(sql_type = Nullable<Text>)]
+    email: Option<String>,
+}
 
-  pre.pretest,
-  pre.pretest_started_at,
-  pre.pretest_finished_at,
+#[derive(QueryableByName, Debug, Serialize)]
+struct EmailRegistryRow {
+    #[diesel(sql_type = Int4)]
+    id: i32,
 
-  post.posttest,
-  post.posttest_started_at,
-  post.posttest_finished_at,
+    #[diesel(sql_type = Text)]
+    email_hash: String,
 
-  tr.game_id,
-  tr.training_score,
-  tr.run_started_at,
-  tr.run_submitted_at
-FROM training_runs tr
-LEFT JOIN pretest pre
-  ON pre.username = tr.username
-LEFT JOIN posttest post
-  ON post.username = tr.username
-ORDER BY tr.username, tr.run_started_at;
+    #[diesel(sql_type = Nullable<Text>)]
+    email_domain: Option<String>,
+}
+
+// -------------------------
+// SQL strings
+// -------------------------
+
+const SQL_GAMES: &str = r#"
+SELECT id, username, started_at, finished_at, score, max_score, time_taken_ms, game_type, user_id
+FROM games
+ORDER BY id;
 "#;
 
-pub async fn analytics_csv() -> impl IntoResponse {
-    let conn = &mut establish_db_connection();
+const SQL_CHALLENGES: &str = r#"
+SELECT id, game_id, core_id, guess, started_at, submitted_at
+FROM challenges
+ORDER BY id;
+"#;
 
-    let rows: Vec<TrainingRunRow> = match sql_query(SQL).load(conn) {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("[analytics] query failed: {:?}", e);
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
-    };
+const SQL_REGISTERED_USERS: &str = r#"
+SELECT id, user_id, username, email
+FROM registered_users
+ORDER BY id;
+"#;
 
+const SQL_EMAIL_REGISTRY: &str = r#"
+SELECT id, email_hash, email_domain
+FROM email_registry
+ORDER BY id;
+"#;
+
+// -------------------------
+// CSV helper
+// -------------------------
+
+fn csv_response<T: Serialize>(filename: &str, rows: Vec<T>) -> impl IntoResponse {
     let mut wtr = csv::Writer::from_writer(Vec::new());
+
     for row in rows {
         if let Err(e) = wtr.serialize(row) {
             eprintln!("[analytics] csv serialize failed: {:?}", e);
@@ -136,8 +149,68 @@ pub async fn analytics_csv() -> impl IntoResponse {
     headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
     headers.insert(
         header::CONTENT_DISPOSITION,
-        "attachment; filename=\"analytics.csv\"".parse().unwrap(),
+        format!("attachment; filename=\"{}\"", filename).parse().unwrap(),
     );
 
     (StatusCode::OK, headers, data).into_response()
+}
+
+// -------------------------
+// Handlers
+// -------------------------
+
+pub async fn games_csv() -> impl IntoResponse {
+    let conn = &mut establish_db_connection();
+
+    let rows: Vec<GamesRow> = match sql_query(SQL_GAMES).load(conn) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("[analytics] games query failed: {:?}", e);
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    csv_response("games.csv", rows)
+}
+
+pub async fn challenges_csv() -> impl IntoResponse {
+    let conn = &mut establish_db_connection();
+
+    let rows: Vec<ChallengesRow> = match sql_query(SQL_CHALLENGES).load(conn) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("[analytics] challenges query failed: {:?}", e);
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    csv_response("challenges.csv", rows)
+}
+
+pub async fn registered_users_csv() -> impl IntoResponse {
+    let conn = &mut establish_db_connection();
+
+    let rows: Vec<RegisteredUsersRow> = match sql_query(SQL_REGISTERED_USERS).load(conn) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("[analytics] registered_users query failed: {:?}", e);
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    csv_response("registered_users.csv", rows)
+}
+
+pub async fn email_registry_csv() -> impl IntoResponse {
+    let conn = &mut establish_db_connection();
+
+    let rows: Vec<EmailRegistryRow> = match sql_query(SQL_EMAIL_REGISTRY).load(conn) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("[analytics] email_registry query failed: {:?}", e);
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    csv_response("email_registry.csv", rows)
 }
