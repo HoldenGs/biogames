@@ -34,7 +34,7 @@ struct GamesRow {
     max_score: Option<i32>,
 
     // Often BIGINT in Postgres; if it's INT4 in your schema, swap to Nullable<Int4> + Option<i32>.
-    #[diesel(sql_type = Nullable<BigInt>)]
+    #[diesel(sql_type = Nullable<Int4>)]
     time_taken_ms: Option<i32>,
 
     #[diesel(sql_type = Nullable<Text>)]
