@@ -4,7 +4,7 @@ use axum::{
 };
 use diesel::prelude::*;
 use diesel::sql_query;
-use diesel::sql_types::{BigInt, Int4, Nullable, Text, Timestamp};
+use diesel::sql_types::{Int4, Nullable, Text, Timestamp};
 use serde::Serialize;
 
 use crate::establish_db_connection;
