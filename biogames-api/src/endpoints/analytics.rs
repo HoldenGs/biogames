@@ -1,6 +1,6 @@
 use axum::{
     http::{header, HeaderMap, StatusCode},
-    response::Response
+    response::{IntoResponse, Response},
 };
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -33,8 +33,7 @@ struct GamesRow {
     #[diesel(sql_type = Nullable<Int4>)]
     max_score: Option<i32>,
 
-    // Your schema says time_taken_ms exists; this is often BIGINT in Postgres.
-    // If it's actually Int4 in your DB, switch BigInt -> Int4 and i64 -> i32.
+    // Often BIGINT in Postgres; if it's INT4 in your schema, swap to Nullable<Int4> + Option<i32>.
     #[diesel(sql_type = Nullable<BigInt>)]
     time_taken_ms: Option<i64>,
 
@@ -53,7 +52,7 @@ struct ChallengesRow {
     #[diesel(sql_type = Int4)]
     game_id: i32,
 
-    // Your schema says core_id exists; type is likely Int4.
+    // If this is nullable in your DB, change to Nullable<Int4> + Option<i32>.
     #[diesel(sql_type = Int4)]
     core_id: i32,
 
@@ -99,25 +98,47 @@ struct EmailRegistryRow {
 // -------------------------
 
 const SQL_GAMES: &str = r#"
-SELECT id, username, started_at, finished_at, score, max_score, time_taken_ms, game_type, user_id
+SELECT
+  id,
+  username,
+  started_at,
+  finished_at,
+  score,
+  max_score,
+  time_taken_ms,
+  game_type,
+  user_id
 FROM games
 ORDER BY id;
 "#;
 
 const SQL_CHALLENGES: &str = r#"
-SELECT id, game_id, core_id, guess, started_at, submitted_at
+SELECT
+  id,
+  game_id,
+  core_id,
+  guess,
+  started_at,
+  submitted_at
 FROM challenges
 ORDER BY id;
 "#;
 
 const SQL_REGISTERED_USERS: &str = r#"
-SELECT id, user_id, username, email
+SELECT
+  id,
+  user_id,
+  username,
+  email
 FROM registered_users
 ORDER BY id;
 "#;
 
 const SQL_EMAIL_REGISTRY: &str = r#"
-SELECT id, email_hash, email_domain
+SELECT
+  id,
+  email_hash,
+  email_domain
 FROM email_registry
 ORDER BY id;
 "#;
@@ -149,7 +170,9 @@ fn csv_response<T: Serialize>(filename: &str, rows: Vec<T>) -> Response {
     headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
     headers.insert(
         header::CONTENT_DISPOSITION,
-        format!("attachment; filename=\"{}\"", filename).parse().unwrap(),
+        format!("attachment; filename=\"{}\"", filename)
+            .parse()
+            .unwrap(),
     );
 
     (StatusCode::OK, headers, data).into_response()
