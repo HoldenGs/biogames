@@ -6,11 +6,34 @@ use diesel::prelude::*;
 use diesel::sql_query;
 use diesel::sql_types::{Int4, Nullable, Text, Timestamp};
 use serde::Serialize;
+use std::env;
 
 use crate::establish_db_connection;
 
 // -------------------------
-// Row structs (one per table)
+// Auth helper
+// -------------------------
+
+fn is_authorized(headers: &HeaderMap) -> bool {
+    let expected = match env::var("ANALYTICS_TOKEN") {
+        Ok(v) => v,
+        Err(_) => {
+            eprintln!("[analytics] ANALYTICS_TOKEN not set");
+            return false;
+        }
+    };
+
+    match headers.get(header::AUTHORIZATION) {
+        Some(value) => match value.to_str() {
+            Ok(s) => s == format!("Bearer {}", expected),
+            Err(_) => false,
+        },
+        None => false,
+    }
+}
+
+// -------------------------
+// Row structs
 // -------------------------
 
 #[derive(QueryableByName, Debug, Serialize)]
@@ -33,7 +56,6 @@ struct GamesRow {
     #[diesel(sql_type = Nullable<Int4>)]
     max_score: Option<i32>,
 
-    // Often BIGINT in Postgres; if it's INT4 in your schema, swap to Nullable<Int4> + Option<i32>.
     #[diesel(sql_type = Nullable<Int4>)]
     time_taken_ms: Option<i32>,
 
@@ -52,7 +74,6 @@ struct ChallengesRow {
     #[diesel(sql_type = Int4)]
     game_id: i32,
 
-    // If this is nullable in your DB, change to Nullable<Int4> + Option<i32>.
     #[diesel(sql_type = Int4)]
     core_id: i32,
 
@@ -94,51 +115,29 @@ struct EmailRegistryRow {
 }
 
 // -------------------------
-// SQL strings
+// SQL
 // -------------------------
 
 const SQL_GAMES: &str = r#"
-SELECT
-  id,
-  username,
-  started_at,
-  finished_at,
-  score,
-  max_score,
-  time_taken_ms,
-  game_type,
-  user_id
+SELECT id, username, started_at, finished_at, score, max_score, time_taken_ms, game_type, user_id
 FROM games
 ORDER BY id;
 "#;
 
 const SQL_CHALLENGES: &str = r#"
-SELECT
-  id,
-  game_id,
-  core_id,
-  guess,
-  started_at,
-  submitted_at
+SELECT id, game_id, core_id, guess, started_at, submitted_at
 FROM challenges
 ORDER BY id;
 "#;
 
 const SQL_REGISTERED_USERS: &str = r#"
-SELECT
-  id,
-  user_id,
-  username,
-  email
+SELECT id, user_id, username, email
 FROM registered_users
 ORDER BY id;
 "#;
 
 const SQL_EMAIL_REGISTRY: &str = r#"
-SELECT
-  id,
-  email_hash,
-  email_domain
+SELECT id, email_hash, email_domain
 FROM email_registry
 ORDER BY id;
 "#;
@@ -170,19 +169,21 @@ fn csv_response<T: Serialize>(filename: &str, rows: Vec<T>) -> Response {
     headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
     headers.insert(
         header::CONTENT_DISPOSITION,
-        format!("attachment; filename=\"{}\"", filename)
-            .parse()
-            .unwrap(),
+        format!("attachment; filename=\"{}\"", filename).parse().unwrap(),
     );
 
     (StatusCode::OK, headers, data).into_response()
 }
 
 // -------------------------
-// Handlers
+// Handlers (protected)
 // -------------------------
 
-pub async fn games_csv() -> Response {
+pub async fn games_csv(headers: HeaderMap) -> Response {
+    if !is_authorized(&headers) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+
     let conn = &mut establish_db_connection();
 
     let rows: Vec<GamesRow> = match sql_query(SQL_GAMES).load(conn) {
@@ -196,7 +197,11 @@ pub async fn games_csv() -> Response {
     csv_response("games.csv", rows)
 }
 
-pub async fn challenges_csv() -> Response {
+pub async fn challenges_csv(headers: HeaderMap) -> Response {
+    if !is_authorized(&headers) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+
     let conn = &mut establish_db_connection();
 
     let rows: Vec<ChallengesRow> = match sql_query(SQL_CHALLENGES).load(conn) {
@@ -210,7 +215,11 @@ pub async fn challenges_csv() -> Response {
     csv_response("challenges.csv", rows)
 }
 
-pub async fn registered_users_csv() -> Response {
+pub async fn registered_users_csv(headers: HeaderMap) -> Response {
+    if !is_authorized(&headers) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+
     let conn = &mut establish_db_connection();
 
     let rows: Vec<RegisteredUsersRow> = match sql_query(SQL_REGISTERED_USERS).load(conn) {
@@ -224,7 +233,11 @@ pub async fn registered_users_csv() -> Response {
     csv_response("registered_users.csv", rows)
 }
 
-pub async fn email_registry_csv() -> Response {
+pub async fn email_registry_csv(headers: HeaderMap) -> Response {
+    if !is_authorized(&headers) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+
     let conn = &mut establish_db_connection();
 
     let rows: Vec<EmailRegistryRow> = match sql_query(SQL_EMAIL_REGISTRY).load(conn) {
