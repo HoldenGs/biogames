@@ -46,61 +46,67 @@ struct TrainingRunRow {
 const SQL: &str = r#"
 WITH training_runs AS (
   SELECT
-    g.user_id,
     g.username,
     g.id AS game_id,
     g.score AS training_score,
     MIN(c.started_at)   AS run_started_at,
     MAX(c.submitted_at) AS run_submitted_at
   FROM games g
-  JOIN challenges c ON c.game_id = g.id
+  JOIN challenges c
+    ON c.game_id = g.id
   WHERE g.game_type = 'training'
-    AND g.user_id IS NOT NULL
     AND g.username IS NOT NULL
     AND g.score IS NOT NULL
-  GROUP BY g.user_id, g.username, g.id, g.score
+  GROUP BY g.username, g.id, g.score
 ),
+
 pretest AS (
-  SELECT DISTINCT ON (g.user_id)
-    g.user_id,
-    g.score AS pretest,
-    g.started_at AS pretest_started_at,
-    g.finished_at AS pretest_finished_at
+  SELECT
+    g.username,
+    MAX(g.score)       AS pretest,
+    MAX(g.started_at)  AS pretest_started_at,
+    MAX(g.finished_at) AS pretest_finished_at
   FROM games g
   WHERE g.game_type = 'pretest'
-    AND g.user_id IS NOT NULL
-    AND g.score IS NOT NULL
-  ORDER BY g.user_id, g.finished_at DESC NULLS LAST
+    AND g.username IS NOT NULL
+  GROUP BY g.username
 ),
+
 posttest AS (
-  SELECT DISTINCT ON (g.user_id)
-    g.user_id,
-    g.score AS posttest,
-    g.started_at AS posttest_started_at,
-    g.finished_at AS posttest_finished_at
+  SELECT
+    g.username,
+    MAX(g.score)       AS posttest,
+    MAX(g.started_at)  AS posttest_started_at,
+    MAX(g.finished_at) AS posttest_finished_at
   FROM games g
   WHERE g.game_type = 'posttest'
-    AND g.user_id IS NOT NULL
-    AND g.score IS NOT NULL
-  ORDER BY g.user_id, g.finished_at DESC NULLS LAST
+    AND g.username IS NOT NULL
+  GROUP BY g.username
 )
+
 SELECT
-  tr.user_id,
   tr.username,
+
   pre.pretest,
   pre.pretest_started_at,
   pre.pretest_finished_at,
+
   post.posttest,
   post.posttest_started_at,
   post.posttest_finished_at,
+
   tr.game_id,
   tr.training_score,
   tr.run_started_at,
   tr.run_submitted_at
+
 FROM training_runs tr
-LEFT JOIN pretest pre ON pre.user_id = tr.user_id
-LEFT JOIN posttest post ON post.user_id = tr.user_id
-ORDER BY tr.user_id, tr.run_started_at;
+LEFT JOIN pretest pre
+  ON pre.username = tr.username
+LEFT JOIN posttest post
+  ON post.username = tr.username
+
+ORDER BY tr.username, tr.run_started_at;
 "#;
 
 pub async fn analytics_csv() -> impl IntoResponse {
