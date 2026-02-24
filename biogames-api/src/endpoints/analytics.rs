@@ -128,7 +128,7 @@ pub async fn analytics_csv() -> impl IntoResponse {
     headers.insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
     headers.insert(
         header::CONTENT_DISPOSITION,
-        "attachment; filename=\"biogames_training_runs.csv\"".parse().unwrap(),
+        "attachment; filename=\"analytics.csv\"".parse().unwrap(),
     );
 
     (StatusCode::OK, headers, data).into_response()
