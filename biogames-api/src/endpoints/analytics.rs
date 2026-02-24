@@ -1,6 +1,6 @@
 use axum::{
     http::{header, HeaderMap, StatusCode},
-    response::IntoResponse,
+    response::Response
 };
 use diesel::prelude::*;
 use diesel::sql_query;
@@ -126,7 +126,7 @@ ORDER BY id;
 // CSV helper
 // -------------------------
 
-fn csv_response<T: Serialize>(filename: &str, rows: Vec<T>) -> impl IntoResponse {
+fn csv_response<T: Serialize>(filename: &str, rows: Vec<T>) -> Response {
     let mut wtr = csv::Writer::from_writer(Vec::new());
 
     for row in rows {
@@ -159,7 +159,7 @@ fn csv_response<T: Serialize>(filename: &str, rows: Vec<T>) -> impl IntoResponse
 // Handlers
 // -------------------------
 
-pub async fn games_csv() -> impl IntoResponse {
+pub async fn games_csv() -> Response {
     let conn = &mut establish_db_connection();
 
     let rows: Vec<GamesRow> = match sql_query(SQL_GAMES).load(conn) {
@@ -173,7 +173,7 @@ pub async fn games_csv() -> impl IntoResponse {
     csv_response("games.csv", rows)
 }
 
-pub async fn challenges_csv() -> impl IntoResponse {
+pub async fn challenges_csv() -> Response {
     let conn = &mut establish_db_connection();
 
     let rows: Vec<ChallengesRow> = match sql_query(SQL_CHALLENGES).load(conn) {
@@ -187,7 +187,7 @@ pub async fn challenges_csv() -> impl IntoResponse {
     csv_response("challenges.csv", rows)
 }
 
-pub async fn registered_users_csv() -> impl IntoResponse {
+pub async fn registered_users_csv() -> Response {
     let conn = &mut establish_db_connection();
 
     let rows: Vec<RegisteredUsersRow> = match sql_query(SQL_REGISTERED_USERS).load(conn) {
@@ -201,7 +201,7 @@ pub async fn registered_users_csv() -> impl IntoResponse {
     csv_response("registered_users.csv", rows)
 }
 
-pub async fn email_registry_csv() -> impl IntoResponse {
+pub async fn email_registry_csv() -> Response {
     let conn = &mut establish_db_connection();
 
     let rows: Vec<EmailRegistryRow> = match sql_query(SQL_EMAIL_REGISTRY).load(conn) {
