@@ -99,13 +99,11 @@ SELECT
   tr.training_score,
   tr.run_started_at,
   tr.run_submitted_at
-
 FROM training_runs tr
 LEFT JOIN pretest pre
   ON pre.username = tr.username
 LEFT JOIN posttest post
   ON post.username = tr.username
-
 ORDER BY tr.username, tr.run_started_at;
 "#;
 
