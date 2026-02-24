@@ -12,6 +12,7 @@ pub mod generate_user_id;
 pub mod register_with_username;
 pub mod get_preview_core_id;
 pub mod get_her2_core_image;
+pub mod analytics;
 
 pub use create_game::*;
 pub use get_current_challenge::*;
@@ -27,3 +28,4 @@ pub use generate_user_id::generate_user_id;
 pub use register_with_username::register_with_username;
 pub use get_preview_core_id::*;
 pub use get_her2_core_image::*;
+pub use analytics::*;

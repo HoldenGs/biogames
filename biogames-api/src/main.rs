@@ -32,7 +32,8 @@ use biogames_api::{
         generate_user_id::generate_user_id,
         register_with_username::register_with_username,
         get_preview_core_id::*,
-        get_her2_core_image::*
+        get_her2_core_image::*,
+        analytics::*,
     },
     establish_db_connection
 };
@@ -73,6 +74,7 @@ async fn main() {
         .route("/register-with-username", post(register_with_username))
         .route("/api/preview_core_id", get(get_preview_core_id))
         .route("/api/her2_core_images/:her2_core_id", get(get_her2_core_image))
+        .route("/analytics/analytics.csv", get(analytics_csv))
         .layer(cors);
 
 
