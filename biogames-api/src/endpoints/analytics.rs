@@ -12,9 +12,6 @@ use crate::establish_db_connection;
 #[derive(QueryableByName, Debug, Serialize)]
 struct TrainingRunRow {
     #[diesel(sql_type = Text)]
-    user_id: String,
-
-    #[diesel(sql_type = Text)]
     username: String,
 
     #[diesel(sql_type = Nullable<Int4>)]
