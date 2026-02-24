@@ -55,6 +55,9 @@ WITH training_runs AS (
   FROM games g
   JOIN challenges c ON c.game_id = g.id
   WHERE g.game_type = 'training'
+    AND g.user_id IS NOT NULL
+    AND g.username IS NOT NULL
+    AND g.score IS NOT NULL
   GROUP BY g.user_id, g.username, g.id, g.score
 ),
 pretest AS (
@@ -65,6 +68,8 @@ pretest AS (
     g.finished_at AS pretest_finished_at
   FROM games g
   WHERE g.game_type = 'pretest'
+    AND g.user_id IS NOT NULL
+    AND g.score IS NOT NULL
   ORDER BY g.user_id, g.finished_at DESC NULLS LAST
 ),
 posttest AS (
@@ -75,6 +80,8 @@ posttest AS (
     g.finished_at AS posttest_finished_at
   FROM games g
   WHERE g.game_type = 'posttest'
+    AND g.user_id IS NOT NULL
+    AND g.score IS NOT NULL
   ORDER BY g.user_id, g.finished_at DESC NULLS LAST
 )
 SELECT
